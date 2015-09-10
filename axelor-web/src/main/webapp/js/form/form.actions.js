@@ -46,7 +46,7 @@ function updateValues(source, target, itemScope, formScope) {
 			var dest = target[key] || [];
 			value = _.map(value, function(item){
 				var found = _.find(dest, function(v){
-					return v.id === item.id;
+					return item.id && v.id === item.id;
 				});
 				if (_.has(item, "version") && item.id) item.$fetched = true;
 				if (found) {
@@ -426,6 +426,18 @@ ActionHandler.prototype = {
 		return deferred.promise;
 	},
 
+	_closeView: function (scope) {
+		if (scope.onOK) {
+			return scope.onOK();
+		}
+		var tab = scope._viewParams || scope.selectedTab;
+		if (scope.closeTab) {
+			scope.closeTab(tab);
+		} else if (scope.$parent) {
+			this._closeView(scope.$parent);
+		}
+	},
+
 	_handleAction: function(action) {
 
 		this._blockUI();
@@ -485,6 +497,19 @@ ActionHandler.prototype = {
 			});
 		}
 
+		var pattern = /(,)?\s*(close)\s*,/;
+		if (pattern.test(action)) {
+			var which = pattern.exec(action)[2];
+			axelor.dialogs.error(_t('Invalid use of "{0}" action, must be the last action.', which));
+			deferred.reject();
+			return deferred.promise;
+		}
+
+		if (action === 'close') {
+			this._closeView(scope);
+			deferred.resolve();
+			return deferred.promise;
+		}
 		if (action === 'validate') {
 			return this._handleSave(true);
 		}
@@ -856,7 +881,7 @@ ActionHandler.prototype = {
 					scope.applyLater(function() {
 						if (confirmed) {
 							var url = "ws/rest/com.axelor.meta.db.MetaFile/" + data.attached.id + "/content/download";
-							axelor.download(url);
+							ui.download(url);
 							return deferred.resolve();
 						}
 						deferred.reject();
@@ -878,7 +903,7 @@ ActionHandler.prototype = {
 			if (['pdf', 'html'].indexOf(data.reportFormat) > -1) {
 				doOpenView(tab);
 			} else {
-				axelor.download(url);
+				ui.download(url);
 			}
 
 			scope.$timeout(deferred.resolve);
@@ -925,10 +950,8 @@ ActionHandler.prototype = {
 			doOpenView(data.view);
 		}
 
-		if (data.canClose) {
-			if (scope.onOK) {
-				scope.onOK();
-			}
+		if (data.close || data.canClose) {
+			this._closeView(scope);
 		}
 
 		deferred.resolve();
