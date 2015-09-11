@@ -693,7 +693,7 @@ Grid.prototype.parse = function(view) {
 	this._canMove = view.canMove && view.orderBy === "sequence" && !view.groupBy;
 	if (this._canMove) {
 		cols.push({
-			id: "#",
+			id: "_move_column",
 		    name: "",
 		    width: 32,
 		    behavior: "selectAndMove",
@@ -837,7 +837,11 @@ Grid.prototype._doInit = function(view) {
         	grid.focus();
         }
 	};
-	
+
+	if (this._canMove) {
+		dataView.$resequence = _.bind(this._resequence, this);
+	}
+
 	// register grid event handlers
 	this.subscribe(grid.onSort, this.onSort);
 	this.subscribe(grid.onSelectedRowsChanged, this.onSelectionChanged);
@@ -1445,7 +1449,7 @@ Grid.prototype.onKeyDown = function(e, args) {
 Grid.prototype.isCellEditable = function(cell) {
 	var cols = this.grid.getColumns(),
 		col = cols[cell];
-	if (!col || col.id === "_edit_column") {
+	if (!col || col.id === "_edit_column" || col.id === "_move_column") {
 		return false;
 	}
 	var field = col.descriptor || {};
@@ -1479,7 +1483,7 @@ Grid.prototype.findNextEditable = function(posY, posX) {
 		args.row += 1;
 	}
 	args.cell = 0;
-	while (args.cell < posX) {
+	while (args.cell <= posX) {
 		if (this.isCellEditable(args.cell)) {
 			return args;
 		}
@@ -1502,7 +1506,7 @@ Grid.prototype.findPrevEditable = function(posY, posX) {
 		args.row -= 1;
 	}
 	args.cell = cols.length - 1;
-	while (args.cell > posX) {
+	while (args.cell >= posX) {
 		if (this.isCellEditable(args.cell)) {
 			return args;
 		}
@@ -1555,11 +1559,6 @@ Grid.prototype.__saveChanges = function(args, callback) {
 	var ds = this.handler._dataSource;
 	var data = this.scope.dataView;
 	var records = [];
-
-	// resequence
-	if (this._canMove) {
-		this._resequence(data.getItems());
-	}
 
 	records = _.map(data.getItems(), function(rec) {
 		var res = {};
@@ -1912,8 +1911,12 @@ Grid.prototype._resequence = function (items) {
     	return item.sequence || 0;
     }));
     for (var i = 0; i < items.length; i++) {
-    	items[i].sequence = min++;
-    	items[i].$dirty = true;
+    	var last = items[i].sequence;
+    	var next = min++;
+    	if (items[i].sequence !== next) {
+        	items[i].sequence = next;
+    		items[i].$dirty = true;
+    	}
 	}
     return items;
 };
@@ -1968,12 +1971,15 @@ Grid.prototype.onMoveRows = function (event, args) {
     grid.render();
 
     var that = this;
-    setTimeout(function () {
-        dataView.$resequence = true;
-    	that.saveChanges(null, function() {
-    		dataView.$resequence = undefined;
+    this.scope.$timeout(function () {
+    	dataView.$isResequencing = true;
+    	var saved = that.saveChanges(null, function() {
+    		delete dataView.$isResequencing;
     		resetSelection();
     	}, true);
+    	if (saved === false) {
+    		delete dataView.$isResequencing;
+    	}
     });
 };
 
