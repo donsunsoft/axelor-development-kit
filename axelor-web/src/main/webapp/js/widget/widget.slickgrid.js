@@ -497,9 +497,20 @@ function buttonScope(scope) {
 	btnScope._dataSource = handler._dataSource;
 	btnScope.editRecord = function (record) {};
 	btnScope.reload = function () {
+		if ((handler.field||{}).target) {
+			handler.$parent.reload();
+		}
 		return handler.onRefresh();
 	};
-	
+	if ((handler.field||{}).target) {
+		btnScope.onSave = function () {
+			return handler.$parent.onSave.call(handler.$parent, {
+				callOnSave: false,
+				wait: false
+			});
+		};
+	}
+
 	return btnScope;
 }
 
@@ -1320,10 +1331,8 @@ Grid.prototype.onKeyDown = function(e, args) {
 
 	function focusCell(row, cell) {
 		grid.setActiveCell(row, cell);
-		grid.editActiveCell();
 		// make sure cell has focus RM-3938
 		setTimeout(function () {
-			grid.setActiveCell(row, cell);
 			grid.editActiveCell();
 		});
 	}
@@ -1421,7 +1430,7 @@ Grid.prototype.findNextEditable = function(posY, posX) {
 		args.row += 1;
 	}
 	args.cell = 0;
-	while (args.cell < posX) {
+	while (args.cell <= posX) {
 		if (this.isCellEditable(args.cell)) {
 			return args;
 		}
@@ -1440,11 +1449,11 @@ Grid.prototype.findPrevEditable = function(posY, posX) {
 		}
 		args.cell -= 1;
 	}
-	if (args.row >= 0) {
+	if (args.row > 0) {
 		args.row -= 1;
 	}
 	args.cell = cols.length - 1;
-	while (args.cell > posX) {
+	while (args.cell >= posX) {
 		if (this.isCellEditable(args.cell)) {
 			return args;
 		}
@@ -1635,12 +1644,14 @@ Grid.prototype.addNewRow = function (args) {
 		grid.invalidateRow(dataView.length);
 		dataView.addItem(item);
 
-		cell = self.findNextEditable(args.row, args.cell);
-		if (cell) {
-			grid.focus();
-			grid.setActiveCell(cell.row, cell.cell);
-			grid.editActiveCell();
-		}
+		self.scope.waitForActions(function () {
+			cell = self.findNextEditable(args.row, args.cell);
+			if (cell) {
+				grid.focus();
+				grid.setActiveCell(cell.row, cell.cell);
+				grid.editActiveCell();
+			}
+		}, 100);
 	}
 
 	function focus() {
@@ -1650,13 +1661,16 @@ Grid.prototype.addNewRow = function (args) {
 		if (grid.getDataLength() > cell.row) {
 			return grid.editActiveCell();
 		}
+		if (!self.canAdd()) {
+			return;
+		}
 
 		self.editorScope.doOnNew();
 		self.scope.waitForActions(function () {
 			self.scope.waitForActions(function () {
 				addRow(self.editorScope.record);
 			});
-		});
+		}, 100);
 	}
 
 	if (args.item || grid.getDataLength() === 0) {
@@ -1681,7 +1695,9 @@ Grid.prototype.canEdit = function () {
 
 Grid.prototype.canAdd = function () {
 	var handler = this.handler || {};
-	return this.canEdit() && handler.canNew && handler.canNew();
+	if (!this.editable) return false;
+	if (handler.isReadonly && handler.isReadonly()) return false;
+	return handler.canNew && handler.canNew();
 }
 
 Grid.prototype.setEditors = function(form, formScope, forEdit) {
