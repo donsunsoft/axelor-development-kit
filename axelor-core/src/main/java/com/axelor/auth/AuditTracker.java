@@ -180,8 +180,15 @@ final class AuditTracker {
 		// find first matched message
 		for (TrackMessage tm : track.messages()) {
 			if (hasEvent(tm, TrackEvent.ALWAYS) ||
-				hasEvent(tm, previousState == null ? TrackEvent.CREATE: TrackEvent.UPDATE)) {
-				if (isBlank(tm.tag()) && scriptHelper.test(tm.condition())) {
+				hasEvent(tm, previousState == null ? TrackEvent.CREATE : TrackEvent.UPDATE)) {
+				boolean matched = tm.fields().length == 0;
+				for (String field : tm.fields()) {
+					matched = previousState != null && !Objects.equal(values.get(field), oldValues.get(field));
+					if (matched) {
+						break;
+					}
+				}
+				if (matched && isBlank(tm.tag()) && scriptHelper.test(tm.condition())) {
 					msg = tm.message();
 					break;
 				}
@@ -204,7 +211,7 @@ final class AuditTracker {
 
 			String title = property.getTitle();
 			if (isBlank(title)) {
-				title = Inflector.getInstance().titleize(name);
+				title = Inflector.getInstance().humanize(name);
 			}
 
 			final Object value = values.get(name);

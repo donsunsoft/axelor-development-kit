@@ -216,7 +216,8 @@ ActionHandler.prototype = {
 	
 	_getPrompt: function () {
 		var prompt = this.prompt;
-		if (_.isFunction(this.scope.attr)) {
+		var itemScope = this.element.scope();
+		if (_.isFunction(itemScope.attr)) {
 			prompt = this.scope.attr('prompt') || prompt;
 		}
 		return prompt;
@@ -549,11 +550,13 @@ ActionHandler.prototype = {
 
 		function doReload(pending) {
 			self._invalidateContext = true;
-			var promise = scope.reload(true);
+			var promise = scope.reload();
 			if (promise) {
 				promise.then(function(){
 					deferred.resolve(pending);
 				}, deferred.reject);
+			} else {
+				deferred.resolve(pending);
 			}
 			return deferred.promise;
 		}
@@ -681,7 +684,7 @@ ActionHandler.prototype = {
 		if (data.signal) {
 			formScope.$broadcast(data.signal, data['signal-data']);
 		}
-		
+
 		function findItems(name) {
 
 			var items;
@@ -931,7 +934,15 @@ ActionHandler.prototype = {
 				if (!views.grid) tab.views.push({type: 'grid'});
 				if (!views.form) tab.views.push({type: 'form'});
 			}
-			
+			if (tab.viewType === "html" && (tab.params||{}).download) {
+				var view = _.findWhere(tab.views, { type: "html" });
+				if (view) {
+					var url = view.name || view.resource;
+					var fileName = tab.params.fileName || "true";
+					ui.download(url, fileName);
+					return scope.applyLater();
+				}
+			}
 			if (tab.params && tab.params.popup) {
 				tab.$popupParent = formScope;
 			}

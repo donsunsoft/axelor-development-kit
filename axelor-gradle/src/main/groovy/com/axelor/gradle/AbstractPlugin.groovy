@@ -20,11 +20,9 @@ package com.axelor.gradle
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.plugins.ide.eclipse.model.SourceFolder
 
 import com.axelor.common.VersionUtils
 import com.axelor.gradle.tasks.I18nTask
-
 
 abstract class AbstractPlugin implements Plugin<Project> {
 
@@ -50,10 +48,8 @@ abstract class AbstractPlugin implements Plugin<Project> {
 
 		project.configure(project) {
 
-			apply plugin: 'groovy'
-			apply plugin: 'eclipse'
-			apply plugin: 'eclipse-wtp'
-		
+			apply plugin: 'java'
+
 			dependencies {
 				compile libs.slf4j
 				compile libs.groovy
@@ -62,33 +58,14 @@ abstract class AbstractPlugin implements Plugin<Project> {
 
 			task('i18n-extract', type: I18nTask) {
 				description "Extract i18n messages from source files."
-				group "Axelor i18n"
+				group "Axelor"
 				update = false
 				withContext = project.properties['with.context'] ? true : false
 			}
 			task('i18n-update', type: I18nTask) {
 				description "Update i18 messages from message catalog."
-				group "Axelor i18n"
+				group "Axelor"
 				update = true
-			}
-
-			tasks.eclipse.dependsOn "cleanEclipse"
-
-			eclipse {
-
-				// create src-gen directory so that it's picked up as source folder
-				file("${buildDir}/src-gen").mkdirs()
-
-				// seperate output for main & test sources
-				classpath {
-					defaultOutputDir = file("bin/main")	
-					file {
-						whenMerged {  cp -> 
-							cp.entries.findAll { it instanceof SourceFolder && it.path.startsWith("src/main/") }*.output = "bin/main" 
-							cp.entries.findAll { it instanceof SourceFolder && it.path.startsWith("src/test/") }*.output = "bin/test" 
-						}
-					}
-				}
 			}
 
 			afterEvaluate {
