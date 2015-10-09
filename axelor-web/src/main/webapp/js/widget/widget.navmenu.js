@@ -17,7 +17,9 @@
  */
 (function() {
 
-var module = angular.module('axelor.ui');
+"use strict";
+
+var ui = angular.module('axelor.ui');
 
 NavMenuCtrl.$inject = ['$scope', '$element', 'MenuService', 'NavService'];
 function NavMenuCtrl($scope, $element, MenuService, NavService) {
@@ -25,7 +27,7 @@ function NavMenuCtrl($scope, $element, MenuService, NavService) {
 	$scope.menus = []; 	// the first four visible menus
 	$scope.more = [];	// rest of the menus
 
-	var hasSideBar = __appSettings['view.menubar.location'] !== 'top';
+	var hasSideBar = axelor.config['view.menubar.location'] !== 'top';
 
 	MenuService.all().then(function(response) {
 		var res = response.data,
@@ -87,10 +89,10 @@ function NavMenuCtrl($scope, $element, MenuService, NavService) {
 
 	$scope.hasText = function (menu) {
 		return !menu.icon || menu.icon.indexOf('empty') === -1;
-	}
+	};
 }
 
-module.directive('navMenuBar', function() {
+ui.directive('navMenuBar', function() {
 
 	return {
 
@@ -179,7 +181,7 @@ module.directive('navMenuBar', function() {
 			});
 			
 			var unwatch = scope.$watch('menus', function(menus, old) {
-				if (!menus || menus.length == 0  || menus === old) {
+				if (!menus || menus.length === 0  || menus === old) {
 					return;
 				}
 				unwatch();
@@ -209,7 +211,7 @@ module.directive('navMenuBar', function() {
 	};
 });
 
-module.directive('navMenu', function() {
+ui.directive('navMenu', function() {
 
 	return {
 		replace: true,
@@ -227,7 +229,7 @@ module.directive('navMenu', function() {
 	};
 });
 
-module.directive('navMenuItem', ['$compile', function($compile) {
+ui.directive('navMenuItem', ['$compile', function($compile) {
 
 	return {
 		replace: true,
@@ -240,11 +242,11 @@ module.directive('navMenuItem', ['$compile', function($compile) {
 			var item = scope.item;
 
 			scope.isSubMenu = ctrl.isSubMenu(item);
-			scope.isActionMenu = item.action != null;
+			scope.isActionMenu = !!item.action;
 			
 			scope.onClick = function (e, item) {
 				ctrl.onItemClick(item);
-			}
+			};
 
 			if (ctrl.isSubMenu(item)) {
 				element.addClass("dropdown-submenu");
@@ -260,4 +262,4 @@ module.directive('navMenuItem', ['$compile', function($compile) {
 	};
 }]);
 
-}).call(this);
+})();

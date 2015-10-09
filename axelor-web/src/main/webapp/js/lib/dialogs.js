@@ -15,8 +15,10 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function($, undefined){
-	
+(function() {
+
+	"use strict";
+
 	var dialogs = {
 
 		config: {
@@ -62,7 +64,7 @@
 			var titleOK = opts.yesNo ? _t('Yes') : _t('OK');
 			var titleCancel = opts.yesNo ? _t('No') : _t('Cancel');
 
-			return element = this.box(str, {
+			element = this.box(str, {
 				title: opts.title,
 				onClose: function() {
 					if (doCall) cb(false);
@@ -88,27 +90,25 @@
 					}
 				]
 			});
+
+			return element;
 		},
 		
 		box: function(str, options) {
 		
 			var opts = $.extend({}, options);
 			var title = opts.title || _t('Information');
-			var buttons = opts.buttons;
 			var onClose = opts.onClose || $.noop;
-	
-			if (buttons == null) {
-				buttons = [
-					{
-						'text'	: _t('OK'),
-						'class'	: 'btn btn-primary',
-						'click'	: function() {
-							element.dialog('close');
-						}
+			var buttons = opts.buttons || [
+				{
+					'text'	: _t('OK'),
+					'class'	: 'btn btn-primary',
+					'click'	: function() {
+						element.dialog('close');
 					}
-				];
-			}
-			
+				}
+			];
+
 			var element = $('<div class="message-box" style="padding: 15px;"></div>').attr('title', title).html(str);
 			var dialog = element.dialog({
 				dialogClass: 'ui-dialog-responsive ui-dialog-small ui-dialog-dragged',
@@ -228,12 +228,9 @@
 			return doNotify(message, opts);
 		}
 	};
-	
-	if (this.axelor == null) {
-		this.axelor = {};
-	}
 
+	this.axelor = this.axelor || {};
 	this.axelor.dialogs = dialogs;
 	this.axelor.notify = notify;
 
-})(window.jQuery);
+}).call(this);

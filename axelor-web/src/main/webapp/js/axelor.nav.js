@@ -17,8 +17,10 @@
  */
 (function() {
 
+"use strict";
+
 var app = angular.module("axelor.app");
-var singleTabOnly = axelor.device.mobile || !!__appSettings['view.single.tab'];
+var singleTabOnly = axelor.device.mobile || !!axelor.config['view.single.tab'];
 
 app.factory('NavService', ['$location', 'MenuService', function($location, MenuService) {
 
@@ -35,7 +37,7 @@ app.factory('NavService', ['$location', 'MenuService', function($location, MenuS
 		return _.find(tabs, function(tab){
 			return tab.action == key;
 		});
-	};
+	}
 
 	function findTabTitle(tab) {
 		var first;
@@ -61,14 +63,13 @@ app.factory('NavService', ['$location', 'MenuService', function($location, MenuS
 		}
 
 		var closable = options && options.__tab_closable;
-		if (closable == undefined && view.params) {
+		if (!closable && view.params) {
 			closable = view.params.closable;
 		}
 
-		tab = view;
-		tab.closable = closable;
+		view.closable = closable;
 
-		openTab(tab, options);
+		openTab(view, options);
 	}
 
 	function openTabByName(name, options) {
@@ -237,17 +238,21 @@ app.factory('NavService', ['$location', 'MenuService', function($location, MenuS
 			}
 		}
 
+		function doConfirm(tab, viewScope) {
+			return viewScope.confirmDirty(function(){
+				return close(tab);
+			}, function() {
+				close(null, tab);
+				viewScope.applyLater();
+			});
+		}
+
 		for (var i = 0; i < all.length; i++) {
 			var tab = all[i];
 			var viewScope = tab.$viewScope;
 			if (viewScope && viewScope.confirmDirty) {
 				select(tab);
-				return viewScope.confirmDirty(function(){
-					return close(tab);
-				}, function() {
-					close(null, tab);
-					viewScope.applyLater();
-				});
+				return doConfirm(tab, viewScope);
 			}
 			return close(tab);
 		}
@@ -322,19 +327,19 @@ function NavCtrl($scope, $rootScope, $location, NavService) {
 
 	$scope.singleTabOnly = singleTabOnly;
 
-	$scope.navTabs = Object.defineProperty($scope, 'navTabs', {
+	Object.defineProperty($scope, 'navTabs', {
 		get: function() {
 			return NavService.getTabs();
 		}
 	});
 	
-	$scope.navPopups = Object.defineProperty($scope, 'navPopups', {
+	Object.defineProperty($scope, 'navPopups', {
 		get: function() {
 			return NavService.getPopups();
 		}
 	});
 
-	$scope.selectedTab = Object.defineProperty($scope, 'selectedTab', {
+	Object.defineProperty($scope, 'selectedTab', {
 		get: function() {
 			return NavService.getSelected();
 		}
@@ -461,11 +466,11 @@ function NavCtrl($scope, $rootScope, $location, NavService) {
 	});
 
 	$scope.$watch('routePath', function(path) {
-		var app = $scope.app || {};
-		if (!app.homeAction || _.last(path) !== "main") {
+		var homeAction = axelor.config["user.action"];
+		if (!homeAction || _.last(path) !== "main") {
 			return;
 		}
-		NavService.openTabByName(app.homeAction, {
+		NavService.openTabByName(homeAction, {
 			__tab_prepend: true,
 			__tab_closable: false
 		});
@@ -487,7 +492,7 @@ function NavCtrl($scope, $rootScope, $location, NavService) {
 
 		 // menu toggle logic
 		 var menuToggled = false;
-		 var navigator = $scope.app.navigator;
+		 var navigator = axelor.config["user.navigator"];
 
 		 if (navigator !== 'hidden') {
 			 $('#offcanvas-toggle').find('a').click(function (e) {
@@ -511,7 +516,7 @@ function NavCtrl($scope, $rootScope, $location, NavService) {
 			 setTimeout(function () {
 				 $("#offcanvas,#offcanvas-toggle").removeClass("hidden");
 			 }, 100);
-		 }, 100)
+		 }, 100);
 
 		 $(window).on('resize', _.debounce(function () {
 			 $("#offcanvas").removeClass(axelor.device.small ? 'inactive' : 'active');
@@ -525,12 +530,12 @@ function NavCtrl($scope, $rootScope, $location, NavService) {
 TabCtrl.$inject = ['$scope', '$location', '$routeParams'];
 function TabCtrl($scope, $location, $routeParams) {
 
-	var app = $scope.app || {},
+	var homeAction = axelor.config["user.action"],
 		params = _.clone($routeParams),
 		search = _.clone($location.$$search);
 	
-	if (app.homeAction && app.homeAction !== params.resource) {
-		$scope.openTabByName(app.homeAction, {
+	if (homeAction && homeAction !== params.resource) {
+		$scope.openTabByName(homeAction, {
 			__tab_prepend: true,
 			__tab_closable: false
 		});
@@ -548,4 +553,4 @@ function TabCtrl($scope, $location, $routeParams) {
 app.controller("NavCtrl", NavCtrl);
 app.controller("TabCtrl", TabCtrl);
 
-}).call(this);
+})();

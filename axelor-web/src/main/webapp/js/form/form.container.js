@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -265,7 +267,7 @@ ui.formWidget('Tabs', {
 				return axelor.$adjustSize();
 			
 			for(var i = 0 ; i < tabs.length ; i++) {
-				var tab = tabs[i];
+				tab = tabs[i];
 				if (!tab.hidden) {
 					return $scope.select(tabs[i]);
 				}
@@ -386,7 +388,7 @@ ui.formWidget('ButtonGroup', {
 		}
 		scope.$watch(adjust);
 		scope.$callWhen(function () {
-			return element.is(':visible')
+			return element.is(':visible');
 		}, adjust);
 	},
 	transclude: true,
@@ -500,7 +502,7 @@ ui.formWidget('PanelTabs', {
 				elem: elem,
 				tabItem: $(),
 				menuItem: $()
-			}
+			};
 			scope.tabs.push(tab);
 		});
 		
@@ -600,7 +602,7 @@ ui.formWidget('PanelTabs', {
 
 			var tabs = scope.tabs;
 			for(var i = 0 ; i < tabs.length ; i++) {
-				var tab = tabs[i];
+				tab = tabs[i];
 				if (!tab.hidden) {
 					return scope.selectTab(tabs[i]);
 				}
@@ -674,14 +676,15 @@ ui.formWidget('PanelTabs', {
 
 			var width = 0;
 			var last = null;
+			var tab, count;
 
-			for (var count = 0; count < scope.tabs.length; count++) {
-				var tab = scope.tabs[count];
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
 				tab.$visible = false;
 			}
 
-			for (var count = 0; count < scope.tabs.length; count++) {
-				var tab = scope.tabs[count];
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
 				var elem = tab.tabItem;
 
 				if (tab.hidden) {
@@ -704,8 +707,8 @@ ui.formWidget('PanelTabs', {
 			}
 
 			var menuVisible = false;
-			for (var count = 0; count < scope.tabs.length; count++) {
-				var tab = scope.tabs[count];
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
 				if (tab.hidden || tab.$visible) continue;
 				tab.menuItem.show().data('visible', true);
 				menuVisible = true;
@@ -798,4 +801,4 @@ ui.formWidget('PanelTab', {
 	}
 });
 
-})(this);
+})();

@@ -17,16 +17,20 @@
  */
 (function() {
 
-var ui = angular.module('axelor.ui');
+/* global Slick: true */
 
-this.GridViewCtrl = GridViewCtrl;
+"use strict";
+
+var ui = angular.module('axelor.ui');
 
 ui.controller('GridViewCtrl', GridViewCtrl);
 
-GridViewCtrl.$inject = ['$scope', '$element'];
+ui.GridViewCtrl = GridViewCtrl;
+ui.GridViewCtrl.$inject = ['$scope', '$element'];
+
 function GridViewCtrl($scope, $element) {
 
-	DSViewCtrl('grid', $scope, $element);
+	ui.DSViewCtrl('grid', $scope, $element);
 
 	var ds = $scope._dataSource;
 	var page = {};
@@ -227,7 +231,7 @@ function GridViewCtrl($scope, $element) {
 			sortBy, pageNum,
 			domain = null,
 			context = null,
-			action = undefined,
+			action = null,
 			criteria = {
 				operator: 'and'
 			};
@@ -254,7 +258,7 @@ function GridViewCtrl($scope, $element) {
 			var field = $scope.fields[key] || {};
 			var type = field.type || 'string';
 			var operator = 'like';
-			var value2 = undefined;
+			var value2;
 
 			//TODO: implement expression parser
 			
@@ -361,7 +365,7 @@ function GridViewCtrl($scope, $element) {
 
 	$scope.pagerText = function() {
 		if (page && page.from !== undefined) {
-			if (page.total == 0) return null;
+			if (page.total === 0) return null;
 			return _t("{0} to {1} of {2}", page.from + 1, page.to, page.total);
 		}
 	};
@@ -424,7 +428,7 @@ function GridViewCtrl($scope, $element) {
 			});
 
 			ds.removeAll(selected).success(function(records, page){
-				if (records.length == 0 && page.total > 0) {
+				if (records.length === 0 && page.total > 0) {
 					$scope.onRefresh();
 				}
 			});
@@ -529,7 +533,7 @@ function GridViewCtrl($scope, $element) {
 			var filePath = 'ws/rest/' + $scope._model + '/export/' + fileName;
 			ui.download(filePath, fileName);
 		});
-	}
+	};
 
 	function focusFirst() {
 		var index = _.first($scope.selection) || 0;
@@ -581,14 +585,14 @@ function GridViewCtrl($scope, $element) {
 	};
 }
 
-angular.module('axelor.ui').directive('uiViewGrid', function(){
+ui.directive('uiViewGrid', function(){
 	return {
 		replace: true,
 		template: '<div ui-slick-grid ui-widget-states></div>'
 	};
 });
 
-angular.module('axelor.ui').directive('uiPortletGrid', function(){
+ui.directive('uiPortletGrid', function(){
 	return {
 		controller: ['$scope', '$element', 'ViewService', 'NavService', 'MenuService',
 		             function($scope, $element, ViewService, NavService, MenuService) {
@@ -604,8 +608,7 @@ angular.module('axelor.ui').directive('uiPortletGrid', function(){
 
 				promise.success(function (result) {
 					if (!result.data) return;
-					view = result.data[0].view;
-
+					var view = result.data[0].view;
 					return doOpen(force, view);
 				});
 			}
@@ -724,4 +727,4 @@ angular.module('axelor.ui').directive('uiPortletGrid', function(){
 	};
 });
 
-}).call(this);
+})();

@@ -17,13 +17,15 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module("axelor.ui");
 
 var NestedForm = {
 	scope: true,
 	controller: [ '$scope', '$element', function($scope, $element) {
 		
-		FormViewCtrl.call(this, $scope, $element);
+		ui.FormViewCtrl.call(this, $scope, $element);
 		
 		$scope.onShow = function(viewPromise) {
 			
@@ -56,8 +58,8 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 	params.views = _.compact([params.summaryView || params.summaryViewDefault]);
 	$scope._viewParams = params;
 
-	ViewCtrl($scope, DataSource, ViewService);
-	FormViewCtrl.call(this, $scope, $element);
+	ui.ViewCtrl($scope, DataSource, ViewService);
+	ui.FormViewCtrl.call(this, $scope, $element);
 
 	$scope.visible = false;
 	$scope.onShow = function() {
@@ -74,7 +76,7 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 		} else {
 			originalEdit(record);
 		}
-	};
+	}
 	
 	function doClose() {
 		if ($scope.isDetailView) {
@@ -87,7 +89,7 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 			$element.hide();
 			$element.data('$rel').show();
 		});
-	};
+	}
 	
 	$scope.edit = function(record) {
 		doEdit(record);
@@ -395,4 +397,4 @@ ui.formDirective('uiNestedEditor', NestedEditor);
 ui.formDirective('uiEmbeddedEditor', EmbeddedEditor);
 ui.formDirective('uiNestedForm', NestedForm);
 
-}).call(this);
+})();

@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module("axelor.ui");
 
@@ -25,7 +27,7 @@ ui.OneToManyCtrl.$inject = ['$scope', '$element', 'DataSource', 'ViewService'];
 function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) {
 
 	ui.RefFieldCtrl.call(this, $scope, $element, DataSource, ViewService, function(){
-		GridViewCtrl.call(this, $scope, $element);
+		ui.GridViewCtrl.call(this, $scope, $element);
 		$scope.editorCanSave = false;
 		$scope.selectEnable = false;
 		if (initCallback) {
@@ -185,7 +187,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 	$scope.canShowEdit = function () {
 		var selected = $scope.selection.length ? $scope.selection[0] : null;
 		return selected !== null && $scope.canView();
-	}
+	};
 	
 	$scope.canEdit = function () {
 		return $scope.attr('canEdit') !== false && $scope.canView();
@@ -293,7 +295,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 				items.push(item);
 			});
 			return items;
-		};
+		}
 
 		function fetchData() {
 			var items = scope.getValue();
@@ -323,7 +325,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 		}
 
 		var records = $scope.getItems();
-		if (records == null || records.length == 0)
+		if (records == null || records.length === 0)
 			return;
 
 		for (var i = 0; i < records.length; i++) {
@@ -429,7 +431,7 @@ ui.formInput('OneToMany', {
 				doRenderUnwatch = null;
 					scope.$$fetchData();
 				});
-		};
+		}
 		
 		function isVisible() {
 			return !element.is(':hidden');
@@ -947,7 +949,7 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 		tmpl = tmpl || '{{record.id}}';
 		return "<div class='o2m-list'>" +
 		"<div class='o2m-list-row' ng-class-even=\"'even'\" ng-repeat='record in items'>" + tmpl + "</div>" +
-		"</div>"
+		"</div>";
 	},
 
 	template_editable: function (scope) {
@@ -961,7 +963,7 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 			"<div class='o2m-list-row o2m-list-add'>" +
 				"<a tabindex='-1' href='' ng-click='addItem()'><i class='fa fa-plus'></i></a>" +
 			"</div>" +
-		"</div>"
+		"</div>";
 	},
 	template: null
 });
@@ -1150,4 +1152,4 @@ ui.formInput('ManyToManyInline', 'OneToManyInline', {
 	}
 });
 
-}).call(this);
+})();

@@ -15,15 +15,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 var popoverElem = null;
 var popoverTimer = null;
 
 function canDisplayPopover(scope, details) {
-	var mode = __appSettings['application.mode'];
-	var tech = __appSettings['user.technical'];
+	var mode = axelor.config['application.mode'];
+	var tech = axelor.config['user.technical'];
 	
 	if (axelor.device.mobile) {
 		return false;
@@ -38,8 +40,8 @@ function canDisplayPopover(scope, details) {
 
 function makePopover(scope, element, callback, placement) {
 	
-	var mode = __appSettings['application.mode'];
-	var tech = __appSettings['user.technical'];
+	var mode = axelor.config['application.mode'];
+	var tech = axelor.config['user.technical'];
 	var doc = $(document);
 	
 	var table = null;
@@ -70,7 +72,7 @@ function makePopover(scope, element, callback, placement) {
 		placement: function() {
 			if (placement) return placement;
 			var coord = $(element.get(0)).offset(),
-				viewport = {height: innerHeight, width: window.innerWidth};
+				viewport = { height: window.innerHeight, width: window.innerWidth };
 			if(viewport.height < (coord.top + 100))
 				return 'top';
 			if(coord.left > (viewport.width / 2))
@@ -223,6 +225,8 @@ ui.directive('uiHelpPopover', function() {
 		}
 
 		var value = scope.$eval('$$original.' + field.name);
+		var length;
+
 		if (value && /-one$/.test(field.serverType)) {
 			value = _.compact([value.id, value[field.targetName]]).join(',');
 			value = '(' + value + ')';
@@ -231,7 +235,7 @@ ui.directive('uiHelpPopover', function() {
 			value = _.str.repeat('*', value.length);
 		}
 		if (value && /^(string|image|binary)$/.test(field.type)) {
-			var length = value.length;
+			length = value.length;
 			value = _.first(value, 50);
 			if (length > 50) {
 				value.push('...');
@@ -239,7 +243,7 @@ ui.directive('uiHelpPopover', function() {
 			value = value.join('');
 		}
 		if (value && /(panel-related|one-to-many|many-to-many)/.test(field.serverType)) {
-			var length = value.length;
+			length = value.length;
 			value = _.first(value, 5);
 			value = _.map(value, function(v){
 				return v.id;
@@ -261,7 +265,7 @@ ui.directive('uiHelpPopover', function() {
 		if(canDisplayPopover(scope, false)) {
 			makePopover(scope, element, getHelp);
 		}
-	};
+	}
 
 	return function(scope, element, attrs) {
 		var field = scope.field;
@@ -493,4 +497,4 @@ ui.formItem('ToolButton', 'Button', {
 	template: '<button class="btn" ui-show="!isHidden()" name="{{btn.name}}" ui-actions ui-widget-states>{{title}}</button>'
 });
 
-})(this);
+})();

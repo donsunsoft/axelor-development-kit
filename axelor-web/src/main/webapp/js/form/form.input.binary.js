@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -166,7 +168,7 @@ ui.formInput('Image', 'ImageLink', {
 
 		input.change(function(e, ui) {
 			var file = input.get(0).files[0];
-			var uploadSize = scope.$eval('app.fileUploadSize');
+			var uploadSize = axelor.config["file.upload.size"];
 
 			// reset file selection
 			input.get(0).value = null;
@@ -414,4 +416,4 @@ ui.formInput('BinaryLink', {
 	'</div>'
 });
 
-})(this);
+})();

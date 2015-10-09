@@ -19,16 +19,18 @@
 
 "use strict";
 
+var ui = angular.module("axelor.ui");
+
 CustomViewCtrl.$inject = ['$scope', '$http', 'DataSource', 'ViewService'];
 function CustomViewCtrl($scope, $http, DataSource, ViewService) {
 
-	ViewCtrl.call(this, $scope, DataSource, ViewService);
+	ui.ViewCtrl.call(this, $scope, DataSource, ViewService);
 
-	var view = $scope._views['custom'] || {};
+	var view = $scope._views.custom || {};
 	var viewPromise = null;
 
 	$scope.show = function() {
-		if (viewPromise == null) {
+		if (!viewPromise) {
 			viewPromise = $scope.loadView('custom', view.name);
 			viewPromise.then(function(meta) {
 				var schema = meta.view;
@@ -37,7 +39,7 @@ function CustomViewCtrl($scope, $http, DataSource, ViewService) {
 			});
 		}
 		$scope.onShow(viewPromise);
-	}
+	};
 
 	$scope.onShow = function(viewPromise) {
 		viewPromise.then(function () {
@@ -68,7 +70,7 @@ function CustomViewCtrl($scope, $http, DataSource, ViewService) {
 			context = _.extend({}, $scope.$parent.getContext(), context);
 		}
 		return context;
-	}
+	};
 
 	$scope.onRefresh = function() {
 		var context = $scope.getContext();
@@ -95,7 +97,7 @@ var customDirective = ["$compile", function ($compile) {
 					elem = elem.children().first();
 				}
 				if (scope.schema && scope.schema.css) {
-					element.parents(".dashlet:first").addClass(scope.schema.css)
+					element.parents(".dashlet:first").addClass(scope.schema.css);
 				}
 
 				elem = $compile(elem)(evalScope);
@@ -147,7 +149,7 @@ ui.directive('reportBox', function() {
 				"</div>" +
 				"<div class='report-tags' ng-if='tag'><span class='label' ng-class='tagCss'>{{tag}}</span></div>" +
 			"</div>"
-	}
+	};
 });
 
 ui.directive('reportTable',  function() {
@@ -189,7 +191,7 @@ ui.directive('reportTable',  function() {
 					}
 				}
 				return value;
-			}
+			};
 
 			scope.sum = function (name) {
 				if (sums.indexOf(name) === -1) {
@@ -227,7 +229,7 @@ ui.directive('reportTable',  function() {
 					"</tr>" +
 				"</tfoot>" +
 			"</table>"
-	}
+	};
 });
 
 })();

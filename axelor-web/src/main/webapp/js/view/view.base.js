@@ -15,14 +15,19 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-ViewCtrl.$inject = ['$scope', 'DataSource', 'ViewService'];
+(function () {
+
+"use strict";
+
+var ui = angular.module("axelor.ui");
+
+ui.ViewCtrl = ViewCtrl;
+ui.ViewCtrl.$inject = ['$scope', 'DataSource', 'ViewService'];
+
 function ViewCtrl($scope, DataSource, ViewService) {
 
-	if ($scope._viewParams == null) {
-		$scope._viewParams = $scope.selectedTab;
-	}
-
-	if ($scope._viewParams == null) {
+	$scope._viewParams = $scope._viewParams || $scope.selectedTab;
+	if (!$scope._viewParams) {
 		throw "View parameters are not provided.";
 	}
 
@@ -51,13 +56,10 @@ function ViewCtrl($scope, DataSource, ViewService) {
 	};
 
 	$scope.loadView = function(viewType, viewName) {
-		var view = $scope._views[viewType];
-		if (view == null) {
-			view = {
-				type: viewType,
-				name: viewName
-			};
-		}
+		var view = $scope._views[viewType] || {
+			type: viewType,
+			name: viewName
+		};
 		var ctx = $scope._context;
 		if ($scope.getContext) {
 			ctx = $scope.getContext();
@@ -86,7 +88,7 @@ function ViewCtrl($scope, DataSource, ViewService) {
 	$scope.switchTo = function(viewType, /* optional */ callback) {
 
 		var view = $scope._views[viewType];
-		if (view == null) {
+		if (!view) {
 			return;
 		}
 		
@@ -96,7 +98,7 @@ function ViewCtrl($scope, DataSource, ViewService) {
 		var promise = view.deferred.promise;
 		promise.then(function(viewScope){
 
-			if (viewScope == null || switchedTo === viewType) {
+			if (!viewScope || switchedTo === viewType) {
 				return;
 			}
 			
@@ -123,24 +125,24 @@ function ViewCtrl($scope, DataSource, ViewService) {
 	}
 	
 	// hide toolbar button titles
-	$scope.tbTitleHide = !__appSettings['view.toolbar.titles'];
+	$scope.tbTitleHide = !axelor.config['view.toolbar.titles'];
+
+	function switchAndEdit(id, readonly) {
+		$scope.switchTo('form', function(scope) {
+			scope._viewPromise.then(function() {
+				scope.doRead(id).success(function(record) {
+					scope.edit(record);
+					scope.setEditable(!readonly);
+				});
+			});
+		});
+	}
 
 	// show single or default record if specified
 	var context = params.context || {};
 	if (context._showSingle || context._showRecord) {
 		var ds = $scope._dataSource;
 		var forceEdit = (params.params||{}).forceEdit === true;
-
-		function doEdit(id, readonly) {
-			$scope.switchTo('form', function(scope){
-				scope._viewPromise.then(function(){
-					scope.doRead(id).success(function(record){
-						scope.edit(record);
-						scope.setEditable(!readonly);
-					});
-				});
-			});
-		}
 
 		if (context._showRecord > 0) {
 			params.viewType = "form";
@@ -153,7 +155,7 @@ function ViewCtrl($scope, DataSource, ViewService) {
 			fields: ["id"]
 		}).success(function(records, page){
 			if (page.total === 1 && records.length === 1) {
-				return doEdit(records[0].id, !forceEdit);
+				return switchAndEdit(records[0].id, !forceEdit);
 			}
 			return $scope.switchTo($scope._viewType || 'grid');
 		});
@@ -168,12 +170,12 @@ function ViewCtrl($scope, DataSource, ViewService) {
  * directly but actual controller should inherit from it.
  * 
  */
-function DSViewCtrl(type, $scope, $element) {
+ui.DSViewCtrl = function DSViewCtrl(type, $scope, $element) {
 
-	if (type == null) {
+	if (!type) {
 		throw "No view type provided.";
 	}
-	if ($scope._dataSource == null) {
+	if (!$scope._dataSource) {
 		throw "DataSource is not provided.";
 	}
 	
@@ -198,7 +200,7 @@ function DSViewCtrl(type, $scope, $element) {
 	$scope.schema = null;
 
 	$scope.show = function() {
-		if (viewPromise == null) {
+		if (!viewPromise) {
 			viewPromise = $scope.loadView(type, view.name);
 			viewPromise.then(function(meta){
 				var schema = meta.view;
@@ -367,9 +369,9 @@ function DSViewCtrl(type, $scope, $element) {
 			$scope.onRefresh();
 		}
 	});
-}
+};
 
-angular.module('axelor.ui').directive('uiViewPane', function() {
+ui.directive('uiViewPane', function() {
 
 	return {
 		replace: true,
@@ -424,7 +426,7 @@ angular.module('axelor.ui').directive('uiViewPane', function() {
 	};
 });
 
-angular.module('axelor.ui').directive('uiViewPopup', function() {
+ui.directive('uiViewPopup', function() {
 	
 	return {
 		controller: ['$scope', '$element', '$attrs', function ($scope, $element, $attrs) {
@@ -478,7 +480,7 @@ angular.module('axelor.ui').directive('uiViewPopup', function() {
 				});
 			};
 
-			var params = $scope.tab.params || {};
+			params = $scope.tab.params || {};
 			if (!params['popup-save']) {
 				$scope.onPopupOK = false;
 			}
@@ -508,7 +510,7 @@ angular.module('axelor.ui').directive('uiViewPopup', function() {
 	};
 });
 
-angular.module('axelor.ui').directive('uiRecordPager', function(){
+ui.directive('uiRecordPager', function(){
 
 	return {
 		replace: true,
@@ -548,7 +550,7 @@ angular.module('axelor.ui').directive('uiRecordPager', function(){
 	};
 });
 
-angular.module('axelor.ui').directive('uiViewSwitcher', function(){
+ui.directive('uiViewSwitcher', function(){
 	return {
 		scope: true,
 		link: function(scope, element, attrs) {
@@ -600,7 +602,7 @@ angular.module('axelor.ui').directive('uiViewSwitcher', function(){
 	};
 });
 
-angular.module('axelor.ui').directive('uiHotKeys', function() {
+ui.directive('uiHotKeys', function() {
 
 	var keys = {
 		45: 'new',		// insert
@@ -749,3 +751,5 @@ angular.module('axelor.ui').directive('uiHotKeys', function() {
 		});
 	};
 });
+
+})();

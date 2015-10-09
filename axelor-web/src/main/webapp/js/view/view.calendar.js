@@ -17,6 +17,10 @@
  */
 (function() {
 
+/* global d3: true */
+
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 ui.controller('CalendarViewCtrl', CalendarViewCtrl);
@@ -24,7 +28,7 @@ ui.controller('CalendarViewCtrl', CalendarViewCtrl);
 CalendarViewCtrl.$inject = ['$scope', '$element'];
 function CalendarViewCtrl($scope, $element) {
 
-	DSViewCtrl('calendar', $scope, $element);
+	ui.DSViewCtrl('calendar', $scope, $element);
 
 	var ds = $scope._dataSource;
 
@@ -75,9 +79,9 @@ function CalendarViewCtrl($scope, $element) {
 		return {
 			bg: "" + c,
 			fg: "" + c.brighter(99),
-			bc: "" + c.darker(.9)
+			bc: "" + c.darker(0.9)
 		};
-	};
+	}
 	
 	$scope.fetchItems = function(start, end, callback) {
 
@@ -455,7 +459,7 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 			},
 
 			allDayText: _t('All Day')
-		}
+		};
 
 		main.fullCalendar(options);
 
@@ -516,7 +520,7 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 			});
 
 			bubble.popover('show');
-		};
+		}
 		
 		$("body").on("mousedown", function(e){
 			var elem = $(e.target || e.srcElement);
@@ -529,7 +533,7 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 		});
 
 		function updateEvent(event, record) {
-			if (event == null || !event.id) {
+			if (!event || !event.id) {
 				var color = scope.getColor(record);
 				event = {
 					id: record.id,
@@ -557,7 +561,7 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 			record[view.eventStart] = event.start;
 			record[view.eventStop] = event.end;
 
-			if (editor == null) {
+			if (!editor) {
 				editor = ViewService.compile('<div ui-editor-popup></div>')(scope.$new());
 				editor.data('$target', element);
 			}
@@ -568,7 +572,7 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 			popup.show(record, function(result) {
 				RecordManager.add(result);
 			});
-			if (record == null || !record.id) {
+			if (!record || !record.id) {
 				popup.waitForActions(function() {
 					popup.$broadcast("on:new");
 				});
@@ -673,4 +677,4 @@ angular.module('axelor.ui').directive('uiViewCalendar', ['ViewService', 'ActionS
 	};
 }]);
 
-}).call(this);
+})();

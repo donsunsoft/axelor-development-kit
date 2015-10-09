@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -33,7 +35,16 @@ function inputDialog(options, callback) {
 		"<input type='text' value='" + opts.value +"'>" +
 	"</div>";
 
-	var dialog = axelor.dialogs.box(html, {
+	var dialog;
+
+	function close() {
+		if (dialog) {
+			dialog.dialog("close");
+			dialog = null;
+		}
+	}
+
+	dialog = axelor.dialogs.box(html, {
 		title: opts.title,
 		buttons: [{
 			'text': opts.titleCancel,
@@ -50,13 +61,6 @@ function inputDialog(options, callback) {
 			submit();
 		}
 	});
-
-	function close() {
-		if (dialog) {
-			dialog.dialog("close");
-			dialog = null;
-		}
-	}
 
 	function submit() {
 		var value = dialog.find("input").val().trim();
@@ -75,7 +79,7 @@ function inputDialog(options, callback) {
 ui.controller("DMSFileListCtrl", DMSFileListCtrl);
 DMSFileListCtrl.$inject = ['$scope', '$element'];
 function DMSFileListCtrl($scope, $element) {
-	GridViewCtrl.call(this, $scope, $element);
+	ui.GridViewCtrl.call(this, $scope, $element);
 
 	var _params = $scope._viewParams;
 	var _domain = $scope._domain || "";
@@ -107,7 +111,7 @@ function DMSFileListCtrl($scope, $element) {
 
 	$scope.getCurrentHome = function () {
 		return _params.currentHome;
-	}
+	};
 
 	$scope.getCurrentParent = function () {
 		var base = $scope.currentFolder || $scope.getCurrentHome();
@@ -138,7 +142,7 @@ function DMSFileListCtrl($scope, $element) {
 	};
 
 	$scope.sync = function () {
-	}
+	};
 
 	function doReload() {
 		var fields = _.pluck($scope.fields, 'name');
@@ -150,14 +154,14 @@ function DMSFileListCtrl($scope, $element) {
 			domain: $scope._domain,
 			context: context
 		});
-	};
+	}
 
 	$scope.reload = function () {
 		var promise = doReload();
 		promise.then(function () {
 			return $scope.sync();
 		});
-	}
+	};
 
 	$scope.reloadNoSync = function () {
 		return doReload();
@@ -217,7 +221,7 @@ function DMSFileListCtrl($scope, $element) {
 		$scope.currentPaths = paths;
 
 		return $scope.reloadNoSync();
-	}
+	};
 
 	$scope.onItemClick = function(event, args) {
 		var elem = $(event.target);
@@ -269,7 +273,7 @@ function DMSFileListCtrl($scope, $element) {
 
 		var name = opts.name;
 		while(existing.indexOf(name) > -1) {
-			name = opts.name + " (" + ++count + ")";
+			name = opts.name + " (" + (++count) + ")";
 		}
 
 		inputDialog({
@@ -417,7 +421,7 @@ function DMSFileListCtrl($scope, $element) {
 
 	$scope.onShowRelated = function () {
 		var record = getSelected() || {};
-		var id = record.relatedId
+		var id = record.relatedId;
 		var model = record.relatedModel;
 		if (id && model) {
 			$scope.$root.openTabByName("form::" + model, {
@@ -445,7 +449,7 @@ function DMSFileListCtrl($scope, $element) {
 			return false;
 		}
 		return true;
-	}
+	};
 
 	$scope.canEditFile = function () {
 		var record = getSelected();
@@ -665,7 +669,7 @@ ui.directive('uiDmsUploader', ['$q', '$http', function ($q, $http) {
 				file = all[i];
 			}
 			for (i = 0; i < all.length; i++) {
-				var file = all[i];
+				file = all[i];
 				var info = {
 					file: file
 				};
@@ -815,7 +819,7 @@ ui.directive('uiDmsUploader', ['$q', '$http', function ($q, $http) {
 					}
 					scope.applyLater();
 				}
-			}
+			};
 
 			sendChunk();
 
@@ -1008,7 +1012,8 @@ ui.directive("uiDmsFolders", function () {
 						.html(text)
 						.appendTo("body");
 
-					return dd.helper = proxy;
+					dd.helper = proxy;
+					return proxy;
 				});
 
 				grid.onDrag.subscribe(function (e, dd) {
@@ -1029,15 +1034,17 @@ ui.directive("uiDmsFolders", function () {
 			scope.$watch("currentFolder", function (folder) {
 				var folders = scope.folders || {};
 				var rootFolders = scope.rootFolders || [];
+				var id, node;
 
-				for (var id in folders) {
+				for (id in folders) {
 					folders[id].active = false;
 				}
 
 				(rootFolders[0]||{}).active = false;
 
-				var id = (folder||{}).id;
-				var node = folders[id] || rootFolders[0];
+				id = (folder||{}).id;
+				node = folders[id] || rootFolders[0];
+
 				if (node) {
 					node.active = true;
 				}
@@ -1136,14 +1143,15 @@ ui.directive("uiDmsTree", ['$compile', function ($compile) {
 
 			scope.onClick = function (e, node) {
 				if ($(e.target).is("i.handle")) {
-					return node.open = !node.open;
+					node.open = !node.open;
+					return;
 				}
 				return handler.onFolderClick(node);
 			};
 
 			scope.onMoveFiles = function (files, toFolder) {
 				return handler.onMoveFiles(files, toFolder);
-			}
+			};
 
 			$compile(template)(scope).appendTo(element);
 		}
@@ -1215,7 +1223,7 @@ ui.directive("uiDmsDetails", function () {
 			//XXX: ui-dialog issue
 			element.zIndex(element.siblings(".slickgrid").zIndex() + 1);
 		}
-	}
+	};
 });
 
 // members popup
@@ -1225,7 +1233,7 @@ ui.directive("uiDmsMembersPopup", ["$compile", function ($compile) {
 
 			$scope.onSavePermissions = function () {
 				$scope._onSavePermissions();
-			}
+			};
 		}],
 		link: function (scope, element, attrs) {
 
@@ -1346,8 +1354,8 @@ ui.directive("uiDmsInlineForm", function () {
 					name: $scope.formName
 				}]
 			};
-			ViewCtrl.call(this, $scope, DataSource, ViewService);
-			FormViewCtrl.call(this, $scope, $element);
+			ui.ViewCtrl.call(this, $scope, DataSource, ViewService);
+			ui.FormViewCtrl.call(this, $scope, $element);
 
 			$scope.setEditable();
 			$scope.onHotKey = function (e) {
@@ -1382,7 +1390,7 @@ ui.directive("uiDmsPopup", ['$compile', function ($compile) {
 				}]
 			};
 
-			ViewCtrl.apply(this, arguments);
+			ui.ViewCtrl.apply(this, arguments);
 
 			var ds = DataSource.create("com.axelor.dms.db.DMSFile");
 
@@ -1462,7 +1470,7 @@ ui.directive("uiDmsPopup", ['$compile', function ($compile) {
 
 			$scope.onClose = function () {
 				$scope._onClose();
-			}
+			};
 
 			if ($scope.onSelect()) {
 				$scope.buttons = [{
@@ -1491,7 +1499,7 @@ ui.directive("uiDmsPopup", ['$compile', function ($compile) {
 						element.dialog("close");
 					}
 				});
-			}
+			};
 
 			setTimeout(function () {
 				var elemDialog = element.parent();
@@ -1598,4 +1606,4 @@ $(function () {
 	}, false);
 });
 
-}).call(this);
+})();

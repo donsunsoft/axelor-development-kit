@@ -21,6 +21,10 @@
  * (c) 2012 Witold Szczerba
  * License: MIT
  */
+(function () {
+
+"use strict";
+
 angular.module('axelor.auth', []).provider('authService', function() {
   /**
    * Holds all the requests which failed due to 401 response,
@@ -37,7 +41,7 @@ angular.module('axelor.auth', []).provider('authService', function() {
       config: config,
       deferred: deferred
     });
-  }
+  };
 
   this.$get = ['$rootScope','$injector', function($rootScope, $injector) {
     var $http; //initialized later because of circular dependency problem
@@ -58,8 +62,8 @@ angular.module('axelor.auth', []).provider('authService', function() {
         $rootScope.$broadcast('event:auth-loginConfirmed');
         retryAll();
       }
-    }
-  }]
+    };
+  }];
 })
 
 /**
@@ -90,3 +94,4 @@ angular.module('axelor.auth', []).provider('authService', function() {
   }]);
 }]);
 
+})();

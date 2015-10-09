@@ -15,28 +15,30 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
 
-	function load(paths) {
-		for(var i = 0 ; i < paths.length ; i++) {
-			var path = paths[i],
-			elem = document.createElement('script');
-			elem.src = path;
-			document.write(outerHTML(elem));
-		}
-	}
+/* jshint evil: true */
 
-	function outerHTML(node){
-		// if IE, Chrome take the internal method otherwise build one
-		return node.outerHTML || (
-		    function(n){
-		        var div = document.createElement('div'), h;
-		        div.appendChild(n);
-		        h = div.innerHTML;
-		        div = null;
-		        return h;
-		    })(node);
+"use strict";
+
+function load(paths) {
+	for (var i = 0; i < paths.length; i++) {
+		var path = paths[i], elem = document.createElement('script');
+		elem.src = path;
+		document.write(outerHTML(elem));
 	}
+}
+
+function outerHTML(node) {
+	// if IE, Chrome take the internal method otherwise build one
+	return node.outerHTML || (function(n) {
+		var div = document.createElement('div'), h;
+		div.appendChild(n);
+		h = div.innerHTML;
+		div = null;
+		return h;
+	})(node);
+}
 
 // make sure i18n is loaded
 if (this._t === undefined) {
@@ -75,8 +77,6 @@ load([
 	'lib/dhtmlxGantt/dhtmlxgantt.js',
 
 	'lib/handsontable/handsontable.full.js',
-
-	'lib/bpmn-js/bpmn-modeler.js',
 
 	'lib/d3/d3.js',
 	'lib/d3/nv/nv.d3.js',
@@ -144,7 +144,6 @@ load([
 
 	'js/form/form.mail.js',
 	'js/form/form.code.js',
-	'js/form/form.bpmn.js',
 
 	'js/view/view.base.js',
 	'js/view/view.form.js',
@@ -164,4 +163,4 @@ load([
 	//-- js-end
 ]);
 
-})(this);
+}).call(this);

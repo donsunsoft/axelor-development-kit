@@ -19,7 +19,9 @@
  * Application Module
  * 
  */
-(function($, undefined){
+(function() {
+
+	"use strict";
 	
 	var loadingElem = null,
 		loadingTimer = null,
@@ -35,7 +37,8 @@
 			loadingTimer = null;
 		}
 		if (loadingCounter > 0) {
-			return loadingTimer = _.delay(hideLoading, 500);
+			loadingTimer = _.delay(hideLoading, 500);
+			return;
 		}
 		loadingTimer = _.delay(function () {
 			loadingTimer = null;
@@ -54,7 +57,7 @@
 			loadingTimer = null;
 		}
 		
-		if (loadingElem == null) {
+		if (loadingElem === null) {
 			loadingElem = $('<div><span class="label label-important loading-counter">' + _t('Loading') + '...</span></div>')
 				.css({
 					position: 'fixed',
@@ -168,7 +171,6 @@
 		$routeProvider
 		
 		.when('/preferences', { action: 'preferences' })
-		.when('/welcome', { action: 'welcome' })
 		.when('/about', { action: 'about' })
 		.when('/system', { action: 'system' })
 		.when('/', { action: 'main' })
@@ -181,6 +183,8 @@
 	}]);
 	
 	module.config(['$httpProvider', function(provider) {
+
+		/* global toString: true */
 
 		function isFile(obj) {
 			return toString.call(obj) === '[object File]';
@@ -244,7 +248,7 @@
 
 		function block(callback) {
 			if (blocked) return true;
-			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; };
+			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; }
 			if (loadingCounter > 0 || blockedCounter > 0) {
 				blocked = true;
 				doc.on("keydown.blockui mousedown.blockui", function(e) {
@@ -262,7 +266,7 @@
 		}
 
 		function unblock(callback) {
-			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; };
+			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; }
 			if (loadingCounter > 0 || blockedCounter > 0 || loadingTimer) {
 				if (spinnerTime === 0) {
 					spinnerTime = moment();
@@ -274,7 +278,8 @@
 				if (blockedCounter > 0) {
 					blockedCounter = blockedCounter - 10;
 				}
-				return blockedTimer = _.delay(unblock, 200, callback);
+				blockedTimer = _.delay(unblock, 200, callback);
+				return;
 			}
 			doc.off("keydown.blockui mousedown.blockui");
 			body.css("cursor", "");
@@ -337,46 +342,21 @@
 	
 	AppCtrl.$inject = ['$rootScope', '$exceptionHandler', '$scope', '$http', '$route', 'authService', 'MessageService', 'NavService'];
 	function AppCtrl($rootScope, $exceptionHandler, $scope, $http, $route, authService, MessageService, NavService) {
-		
-		function getAppInfo(settings) {
-			
-			var info = {
-				name: settings['application.name'],
-				description: settings['application.description'],
-				version: settings['application.version'],
-				author: settings['application.author'],
-				copyright: settings['application.copyright'],
-				home: settings['application.home'],
-				help: settings['application.help'],
-				mode: settings['application.mode'],
-				sdk: settings['application.sdk'],
-				user: settings['user.name'],
-				userId: settings['user.id'],
-				userImage: settings['user.image'],
-				login: settings['user.login'],
-				homeAction: settings['user.action'],
-				navigator: settings['user.navigator'],
-				fileUploadSize: settings['file.upload.size']
-			};
 
-			if (settings['view.confirm.yes-no'] === true) {
-				_.extend(axelor.dialogs.config, {
-					yesNo: true
-				});
-			}
-			
-			return info;
-		}
-	
-		function appInfo() {
-			$http.get('ws/app/info').then(function(response){
-				var settings = response.data;
-				angular.extend($scope.app, getAppInfo(settings));
+		function fetchConfig() {
+			return $http.get('ws/app/info').then(function(response) {
+				_.extend(axelor.config, response.data);
 			});
 		}
-	
-		// See index.jsp
-		$scope.app = getAppInfo(__appSettings);
+
+		// load app config
+		fetchConfig().then(function () {
+			$scope.$user.id = axelor.config["user.id"];
+			$scope.$user.name = axelor.config["user.name"];
+			$scope.$user.image = axelor.config["user.image"];
+		});
+
+		$scope.$user = {};
 		$scope.$year = moment().year();
 		$scope.$unreadMailCount = function () {
 			return MessageService.unreadCount();
@@ -386,20 +366,13 @@
 			NavService.openTabByName('mail.inbox');
 		};
 
-		Object.defineProperty($rootScope, 'app', {
-			enumerable: true,
-			get: function () {
-				return $scope.app;
-			}
-		});
-
 		var loginAttempts = 0;
 		var loginWindow = null;
 		var errorWindow = null;
 		
 		function showLogin(hide) {
 			
-			if (loginWindow == null) {
+			if (loginWindow === null) {
 				loginWindow = $('#loginWindow')
 				.attr('title', _t('Log in'))
 				.dialog({
@@ -429,7 +402,7 @@
 		}
 	
 		function showError(hide) {
-			if (errorWindow == null) {
+			if (errorWindow === null) {
 				errorWindow = $('#errorWindow')
 				.attr('title', _t('Error'))
 				.dialog({
@@ -491,11 +464,16 @@
 				username: $('#loginWindow form input:first').val(),
 				password: $('#loginWindow form input:last').val()
 			};
-			
+
+			var last = axelor.config["user.login"];
+
 			$http.post('login.jsp', data).then(function(response){
 				authService.loginConfirmed();
 				$('#loginWindow form input').val('');
 				$('#loginWindow .alert').hide();
+				if (last !== data.username) {
+					window.location.reload();
+				}
 			});
 		};
 		
@@ -513,7 +491,7 @@
 		$scope.$on('event:auth-loginConfirmed', function() {
 			showLogin(true);
 			loginAttempts = 0;
-			appInfo();
+			fetchConfig();
 		});
 		
 		$scope.httpError = {};
@@ -554,14 +532,21 @@
 			var route = current.$$route,
 				path = route && route.action ? route.action.split('.') : null;
 	
-			if (path == null)
-				return;
-	
-			$scope.routePath = path;
+			if (path) {
+				$scope.routePath = path;
+			}
 		});
 		
 		$scope.routePath = ["main"];
 		$route.reload();
 	}
 
-})(jQuery);
+    //trigger adjustSize event on window resize -->
+	$(function(){
+		$(window).resize(function(event){
+			if (!event.isTrigger)
+				$.event.trigger('adjustSize');
+		});
+	});
+
+})();

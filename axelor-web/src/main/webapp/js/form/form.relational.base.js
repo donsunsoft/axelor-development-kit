@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -77,7 +79,7 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 		$scope._viewParams = params;
 	}
 	
-	ViewCtrl($scope, DataSource, ViewService);
+	ui.ViewCtrl($scope, DataSource, ViewService);
 	
 	$scope.ngModel = null;
 	$scope.editorCanSave = true;
@@ -166,11 +168,13 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 			}
 		}
 		return $scope.showPopupEditor(record);
-	};
+	}
 
 	$scope.showEditor = function(record) {
 		var perm = record ? "read" : "create";
-		if (perm === 'read' && !(record.id > 0)) {
+		var id = (record||{}).id;
+
+		if (perm === 'read' && (!id || id < 0)) {
 			return _showEditor(record);
 		}
 		return $scope.isPermitted(perm, record, function(){
@@ -257,7 +261,7 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 			}
 		});
 
-		if (ids.length == 0) {
+		if (ids.length === 0) {
 			return success(value);
 		}
 		
@@ -319,6 +323,8 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 
 	function fetchSelection(request, response) {
 
+		/* jshint validthis: true */
+
 		var field = this.field;
 		var nameField = field.targetName || 'id',
 			fields = field.targetSearch || [],
@@ -368,7 +374,7 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 			});
 			response(items, page);
 		});
-	};
+	}
 	
 	$scope.createOnTheFly = function (term, popup, onSaveCallback) {
 
@@ -541,4 +547,4 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 	};
 }
 
-}).call(this);
+})();

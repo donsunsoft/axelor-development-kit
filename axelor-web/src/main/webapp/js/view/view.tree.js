@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 (function() {
+
+"use strict";
 	
 var ui = angular.module('axelor.ui');
 
@@ -24,7 +26,7 @@ ui.controller('TreeViewCtrl', TreeViewCtrl);
 TreeViewCtrl.$inject = ['$scope', '$element', 'DataSource', 'ActionService'];
 function TreeViewCtrl($scope, $element, DataSource, ActionService) {
 
-	var view = $scope._views['tree'];
+	var view = $scope._views.tree;
 	var viewPromise = $scope.loadView('tree', view.name);
 
 	$scope.applyLater(function() {
@@ -388,7 +390,7 @@ function Loader(scope, node, DataSource) {
 				'$parentId': parent && parent.id,
 				'$parentModel': current && current.$model,
 				'$draggable': node.draggable,
-				'$folder': child != null && (record._children === undefined || record._children > 0)
+				'$folder': child && (record._children === undefined || record._children > 0)
 			};
 
 			item.$expand = function(callback) {
@@ -419,7 +421,7 @@ function Loader(scope, node, DataSource) {
 
 			return item;
 		});
-	};
+	}
 
 	var page = {};
 	
@@ -449,7 +451,7 @@ function Loader(scope, node, DataSource) {
 	
 	this.pagerText = function() {
 		if (page && page.from !== undefined) {
-			if (page.total == 0) return null;
+			if (page.total === 0) return null;
 			return _t("{0} to {1} of {2}", page.from + 1, page.to, page.total);
 		}
 	};
@@ -555,7 +557,7 @@ ui.directive('uiViewTree', function(){
 			}
 			
 			function onDrop(e, ui) {
-				
+				/* jshint validthis: true */
 				var row = ui.draggable,
 					record = row.data('$record'),
 					current = $(this).data('$record'),
@@ -628,7 +630,7 @@ ui.directive('uiViewTree', function(){
 					helper: function() {
 						return $('<span></span>').append(row.children('td:first').clone());
 					},
-					opacity: .75,
+					opacity: 0.75,
 					containment: 'document',
 					refreshPositions: true,
 					revert: "invalid",
@@ -691,7 +693,7 @@ ui.directive('uiViewTree', function(){
 				
 				var tds = table.find('tr:first').find('td');
 				var ths = element.find('.tree-header').find('th');
-				var widths = new Array();
+				var widths = [];
 
 				if (tds.length !== ths.length) {
 					return;
@@ -754,4 +756,4 @@ ui.directive('uiPortletTree', function(){
 	};
 });
 
-}).call(this);
+})();

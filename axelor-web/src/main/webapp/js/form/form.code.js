@@ -15,7 +15,12 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+/* jshint newcap: false */
+/* global CodeMirror: true */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -120,4 +125,4 @@ ui.formInput('CodeEditor', {
 	template: '<div ng-transclude></div>'
 });
 
-})(this);
+})();

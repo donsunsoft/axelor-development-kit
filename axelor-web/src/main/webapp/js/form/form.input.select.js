@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -40,7 +42,7 @@ function parseNumber(field, value) {
 		return value;
 	}
 	var num = +value;
-	if (num === NaN) {
+	if (isNaN(num)) {
 		return value;
 	}
 	return num;
@@ -114,7 +116,7 @@ ui.formWidget('BaseSelect', {
 				ul.addClass("tag-select-action-menu");
 			}
 			return el;
-		};
+		}
 
 		var showOn = this.showSelectionOn;
 		var doSetup = _.once(function (input) {
@@ -372,7 +374,7 @@ ui.formInput('ImageSelect', 'Select', {
 		
 		scope.findImage = function (value) {
 			return selectIcons[value] || this.BLANK;
-		}
+		};
 
 		scope.$watch('getValue()', function (value, old) {
 			scope.image = scope.findImage(value);
@@ -505,8 +507,9 @@ ui.formInput('MultiSelect', 'Select', {
 			}
 
 			var top = pos.top,
-				left = pos.left,
-				width = element.innerWidth() - left;
+				left = pos.left;
+
+			width = element.innerWidth() - left;
 
 			elem.height(input.height() + 2);
 			elem.width(50);
@@ -836,4 +839,4 @@ ui.formInput('NavSelect', {
 		"</div>"
 });
 
-})(this);
+})();

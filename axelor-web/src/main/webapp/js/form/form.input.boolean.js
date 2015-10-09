@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -110,7 +112,7 @@ ui.formInput('BooleanSelect', 'Boolean', {
 		scope.$selection = [trueText, falseText];
 		scope.format = function (value) {
 			return value ? scope.$selection[0] : scope.$selection[1];
-		}
+		};
 	},
 	link_editable: function (scope, element, attrs, model) {
 		var input = element.find('input');
@@ -196,4 +198,4 @@ ui.formInput('BooleanSwitch', 'Boolean', {
 		"</label>"
 });
 
-})(this);
+})();

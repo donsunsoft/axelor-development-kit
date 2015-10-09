@@ -17,16 +17,18 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 ui.controller('FormViewCtrl', FormViewCtrl);
 
-this.FormViewCtrl = FormViewCtrl;
+ui.FormViewCtrl = FormViewCtrl;
+ui.FormViewCtrl.$inject = ['$scope', '$element'];
 
-FormViewCtrl.$inject = ['$scope', '$element'];
 function FormViewCtrl($scope, $element) {
 
-	DSViewCtrl('form', $scope, $element);
+	ui.DSViewCtrl('form', $scope, $element);
 
 	var ds = $scope._dataSource;
 
@@ -46,7 +48,8 @@ function FormViewCtrl($scope, $element) {
 	 * @param field field name or field element
 	 */
 	$scope.getViewDef = function(field) {
-		var name = id = field,
+		var id = field,
+			name = field,
 			elem = $(field),
 			attrs = {};
 
@@ -113,7 +116,7 @@ function FormViewCtrl($scope, $element) {
 		if (!initialized && params.options && params.options.mode === "edit") {
 			initialized = true;
 			$scope._routeSearch = params.options.search;
-			var recordId = +params.options.state;
+			recordId = +params.options.state;
 			if (recordId > 0) {
 				routeId = recordId;
 				return viewPromise.then(function(){
@@ -283,7 +286,8 @@ function FormViewCtrl($scope, $element) {
 	};
 
 	$scope.isDirty = function() {
-		return $scope.$$dirty = !ds.equals($scope.record, $scope.$$original);
+		$scope.$$dirty = !ds.equals($scope.record, $scope.$$original);
+		return $scope.$$dirty;
 	};
 
 	$scope.$watch("record", function(rec, old) {
@@ -296,10 +300,11 @@ function FormViewCtrl($scope, $element) {
 			editable = !readonly;
 		}
 		if (rec === old) {
-			return $scope.$$dirty = false;
+			$scope.$$dirty = false;
+			return;
 		}
 		$scope.$broadcast("on:record-change", rec);
-		return $scope.$$dirty = $scope.isDirty();
+		$scope.$$dirty = $scope.isDirty();
 	}, true);
 
 	$scope.isValid = function() {
@@ -387,7 +392,8 @@ function FormViewCtrl($scope, $element) {
 
 			if (handler && $scope.record) {
 				if (last) {
-					return $scope.onNewPromise = last.then(handle);
+					$scope.onNewPromise = last.then(handle);
+					return;
 				}
 				$scope.onNewPromise = handle($scope.defaultValues);
 			} else if ($scope.defaultValues) {
@@ -410,7 +416,7 @@ function FormViewCtrl($scope, $element) {
 		$scope._viewPromise.then(function() {
 			$scope.waitForActions(afterVewLoaded);
 		});
-	}
+	};
 
 	$scope.$on("on:new", function (event) {
 		$scope.onNewHandler(event);
@@ -424,10 +430,10 @@ function FormViewCtrl($scope, $element) {
 		event.preventDefault();
 		context = tab.context || {};
 		record = $scope.record || {};
-		checkVersion = "" + __appSettings["view.form.check-version"];
+		checkVersion = "" + axelor.config["view.form.check-version"];
 		if (context.__check_version !== undefined) {
 			checkVersion = "" + context.__check_version;
-		};
+		}
 
 		if (!record.id || checkVersion !== "true") {
 			return;
@@ -699,10 +705,10 @@ function FormViewCtrl($scope, $element) {
 			record = $scope.record || {};
 			
 		if (page && page.from !== undefined) {
-			if (page.total == 0 || page.index == -1 || !record.id) return null;
+			if (page.total === 0 || page.index === -1 || !record.id) return null;
 			return _t("{0} of {1}", (page.from + page.index + 1), page.total);
 		}
-	},
+	};
 	
 	$scope.canNext = function() {
 		var page = ds.page();
@@ -744,11 +750,11 @@ function FormViewCtrl($scope, $element) {
 			if (!user) {
 				return "";
 			}
-			var name = __appSettings['user.nameField'] || 'name';
+			var name = axelor.config['user.nameField'] || 'name';
 			return user[name] || "";
 		}
 		
-		var info = {};
+		var info = {},
 			record = $scope.record || {};
 		if (record.createdOn) {
 			info.createdOn = moment(record.createdOn).format('DD/MM/YYYY HH:mm');
@@ -865,7 +871,7 @@ function FormViewCtrl($scope, $element) {
 		}
 		return record[name];
 	};
-};
+}
 
 ui.formBuild = function (scope, schema, fields) {
 
@@ -921,7 +927,7 @@ ui.formBuild = function (scope, schema, fields) {
 			if (attrs.password) {
 				type = 'password';
 			}
-			if (attrs.image ==  true) {
+			if (attrs.image) {
 				type = "image";
 			}
 			if (type == 'label') { //TODO: allow <static> tag in xml view
@@ -938,7 +944,7 @@ ui.formBuild = function (scope, schema, fields) {
 						orderBy: attrs.orderBy,
 						editable: attrs.editable,
 						editIcon: attrs.editIcon === undefined ? true : attrs.editIcon
-					}]
+					}];
 				}
 				this.items = attrs.items = null;
 			}
@@ -1039,7 +1045,7 @@ ui.formBuild = function (scope, schema, fields) {
 	}
 
 	return elem;
-}
+};
 
 ui.directive('uiViewForm', ['$compile', 'ViewService', function($compile, ViewService){
 
@@ -1108,7 +1114,7 @@ ui.directive('uiViewForm', ['$compile', 'ViewService', function($compile, ViewSe
 				return;
 			}
 			
-			if (translatted == null) {
+			if (!translatted) {
 				translatted = {};
 				_.each(scope.fields_view, function (v, k) {
 					if (v.name) {
@@ -1179,4 +1185,4 @@ ui.directive('uiViewForm', ['$compile', 'ViewService', function($compile, ViewSe
 	};
 }]);
 
-}).call(this);
+})();

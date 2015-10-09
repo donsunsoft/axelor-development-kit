@@ -17,12 +17,14 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 PortalCtrl.$inject = ['$scope', '$element'];
 function PortalCtrl($scope, $element) {
 
-	var view = $scope._views['portal'];
+	var view = $scope._views.portal;
 	if (view.items) {
 		$scope.$timeout(function () {
 			$scope.parse(view);
@@ -140,7 +142,7 @@ function PortletCtrl($scope, $element, MenuService, DataSource, ViewService) {
 	
 	function init() {
 		
-		ViewCtrl.call(self, $scope, DataSource, ViewService);
+		ui.ViewCtrl.call(self, $scope, DataSource, ViewService);
 		
 		$scope.show = function() {
 
@@ -221,13 +223,14 @@ ui.directive('uiViewPortlet', ['$compile', function($compile){
 							}
 
 							if (element.parent().is(":hidden")) {
-								return lazy = true;
+								lazy = true;
+								return;
 							}
 
 							unwatch();
 							unwatch = null;
 
-							var ctx = undefined;
+							var ctx;
 							if (scope.getContext) {
 								ctx = scope.getContext();
 							}
@@ -236,7 +239,7 @@ ui.directive('uiViewPortlet', ['$compile', function($compile){
 							});
 						});
 					});
-				}
+				};
 			})()();
 
 			scope.parsePortlet = _.once(function(view) {
@@ -379,7 +382,7 @@ ui.directive('uiPortalTab', function() {
 			$scope.isNested = true;
 			$scope._model = null;
 
-			ViewCtrl.apply(this, arguments);
+			ui.ViewCtrl.apply(this, arguments);
 		}],
 		template: "<div ui-view-portal></div>"
 	};

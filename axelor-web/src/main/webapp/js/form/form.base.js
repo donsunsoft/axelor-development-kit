@@ -15,7 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+/* jshint validthis: true */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 var widgets = {};
@@ -45,7 +49,7 @@ ui.formCompile = function(element, attrs, linkerFn) {
 		element.addClass(this.css).parent().addClass(this.cellCss);
 		element.data('$attrs', attrs); // store the attrs object for event handlers
 
-		var getViewDef = this.getViewDef || scope.getViewDef || function() {return {}; };
+		var getViewDef = this.getViewDef || scope.getViewDef || function() { return {}; };
 
 		var field = getViewDef.call(scope, element);
 		var props = _.pick(field, ['readonly', 'required', 'hidden', 'title']);
@@ -262,7 +266,7 @@ ui.formDirective = function(name, object) {
 		object.restrict = 'EA';
 	}
 	
-	if (object.template && object.replace == undefined) {
+	if (object.template && !object.replace) {
 		object.replace = true;
 	}
 	
@@ -284,7 +288,7 @@ ui.formDirective = function(name, object) {
 
 			var self = this;
 			
-			if (this.template_editable == null && this.template_readonly == null) {
+			if (!this.template_editable && !this.template_readonly) {
 				return;
 			}
 			
@@ -302,7 +306,7 @@ ui.formDirective = function(name, object) {
 				if (!template_editable) {
 					return false;
 				}
-				if (scope.$elem_editable == null) {
+				if (!scope.$elem_editable) {
 					scope.$elem_editable = $compile(template_editable)(scope);
 					if (self.link_editable) {
 						self.link_editable.call(self, scope, scope.$elem_editable, attrs, model);
@@ -359,7 +363,7 @@ ui.formDirective = function(name, object) {
 						template_readonly = '<span>' + template_readonly + '</span>';
 					}
 				}
-				if (scope.$elem_readonly == null) {
+				if (!scope.$elem_readonly) {
 					scope.$elem_readonly = $compile(template_readonly)(scope);
 					if (self.link_readonly) {
 						self.link_readonly.call(self, scope, scope.$elem_readonly, attrs, model);
@@ -454,7 +458,7 @@ var FormInput = {
 		};
 
 		scope.getValue = function() {
-			if (model != null) {
+			if (model) {
 				return model.$viewValue;
 			}
 			return null;
@@ -566,7 +570,7 @@ function inherit(array) {
 		_.extend(obj, source);
 	});
 
-	if (base == null) {
+	if (!base) {
 		return obj;
 	}
 
@@ -574,19 +578,21 @@ function inherit(array) {
 		return name !== "controller" &&
 			_.isFunction(last[name]) && !last[name].$inject &&
 			_.isFunction(base[name]);
-	};
+	}
+
+	function override(name, fn){
+		return function() {
+			var tmp = this._super;
+			this._super = base[name];
+			var ret = fn.apply(this, arguments);
+			this._super = tmp;
+			return ret;
+		};
+	}
 
 	for(var name in last) {
 		if (overridden(name)) {
-			obj[name] = (function(name, fn){
-				return function() {
-					var tmp = this._super;
-					this._super = base[name];
-					var ret = fn.apply(this, arguments);
-					this._super = tmp;
-					return ret;
-				};
-			})(name, obj[name]);
+			obj[name] = override(name, obj[name]);
 		}
 	}
 
@@ -633,4 +639,4 @@ ui.getWidget = function(type) {
 	return null;
 };
 
-})(this);
+})();

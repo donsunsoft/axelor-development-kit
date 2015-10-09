@@ -17,6 +17,10 @@
  */
 (function() {
 
+/* jshint newcap: false */
+
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 function TableLayout(items, attrs, $scope, $compile) {
@@ -136,7 +140,7 @@ function TableLayout(items, attrs, $scope, $compile) {
 			widths = colWidths || computeWidths(row);
 
 		_.each(row, function(cell, i) {
-				el = $('<td></td>')
+				var el = $('<td></td>')
 					.addClass(cell.css)
 					.attr('colspan', cell.colspan)
 					.attr('rowspan', cell.rowspan)
@@ -145,7 +149,7 @@ function TableLayout(items, attrs, $scope, $compile) {
 				if (_.isArray(widths) && widths[i]) {
 					el.width(widths[i]);
 				}
-				if ($(cell.elem).is('.form-item-container') && __appSettings['view.form.hot-edit']) {
+				if ($(cell.elem).is('.form-item-container') && axelor.config['view.form.hot-edit']) {
 					$(cell.elem).prepend($('<span class="fa fa-pencil hot-edit-icon"></span>'));
 				}
 				numCells += cell.colspan || 1;
@@ -286,7 +290,7 @@ function BarLayout(items, attrs, $scope, $compile) {
 		}
 	});
 
-	if (side.children().size() == 0) {
+	if (side.children().size() === 0) {
 		main.removeClass("span8").addClass("span12");
 		side = null;
 	}
@@ -485,4 +489,4 @@ ui.directive('uiPanelEditor', ['$compile', 'ActionService', function($compile, A
 	};
 }]);
 
-})(this);
+})();
