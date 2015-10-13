@@ -1,4 +1,4 @@
-/*
+/**
  * Axelor Business Solutions
  *
  * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
@@ -15,24 +15,17 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function() {
+package com.axelor.web.tags;
 
-"use strict";
+import java.io.IOException;
 
-var bundle = (window._t || {}).bundle || {};
+import javax.servlet.jsp.JspWriter;
 
-function gettext(key) {
-	var message = bundle[key] || bundle[(key||'').trim()] || key;
-	if (message && arguments.length > 1) {
-		for(var i = 1 ; i < arguments.length ; i++) {
-			var placeholder = new RegExp('\\{' + (i-1) + '\\}', 'g');
-			var value = arguments[i];
-			message = message.replace(placeholder, value);
-		}
+public class StyleTag extends AbstractTag {
+
+	@Override
+	protected void doTag(String src) throws IOException {
+		final JspWriter writer = getJspContext().getOut();
+		writer.println("<link href=\"" + src + "\" rel=\"stylesheet\">");
 	}
-	return message;
 }
-
-this._t = gettext;
-
-}).call(this);

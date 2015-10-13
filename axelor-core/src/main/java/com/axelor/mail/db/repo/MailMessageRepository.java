@@ -109,6 +109,13 @@ public class MailMessageRepository extends JpaRepository<MailMessage> {
 		}
 		entity.setRoot(root);
 
+		// mark root as unread
+		if (root != null && root.getFlags() != null) {
+			for (MailFlags flag : root.getFlags()) {
+				flag.setIsRead(false);
+			}
+		}
+
 		return super.save(entity);
 	}
 
@@ -176,7 +183,7 @@ public class MailMessageRepository extends JpaRepository<MailMessage> {
 		}
 
 		if (flags != null) {
-			details.put("$flags", Resource.toMap(flags, "isRead", "isStarred"));
+			details.put("$flags", Resource.toMap(flags, "isRead", "isStarred", "isArchived"));
 		}
 
 		String eventType = message.getType();

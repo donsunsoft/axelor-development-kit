@@ -51,6 +51,7 @@ class AppPlugin extends AbstractPlugin {
 				compile		"com.axelor:axelor-web:${sdkVersion}"
 				
 				providedCompile	libs.javax_servlet
+				providedCompile	libs.javax_servlet_jsp
 
 				def tomcatVersion = '7.0.64'
 				tomcat "org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}",
@@ -112,12 +113,12 @@ class AppPlugin extends AbstractPlugin {
 				commandLine = ["npm", "install"]
 			}
 
-			task("grunt", type: Exec, dependsOn: 'npm') {
-				description "Run grunt command to build web resources."
+			task("gulp", type: Exec, dependsOn: 'npm') {
+				description "Run gulp command to build web resource bundles."
 				group "Axelor web"
-				def command = "grunt"
+				def command = "gulp"
 				if (OperatingSystem.current().isWindows()) {
-					command = "grunt.cmd"
+					command = "gulp.cmd"
 				}
 				workingDir "${buildDir}/webapp"
 				commandLine = [command]
@@ -147,7 +148,7 @@ class AppPlugin extends AbstractPlugin {
 
 			war.dependsOn "copyWebapp"
 			war.from "${buildDir}/webapp"
-			war.exclude "node_modules", "Gruntfile.js", "package.json"
+			war.exclude "node_modules", "gulpfile.js", "package.json"
 			war.duplicatesStrategy = "EXCLUDE"
 
 			tomcatRun.dependsOn "copyWebapp"

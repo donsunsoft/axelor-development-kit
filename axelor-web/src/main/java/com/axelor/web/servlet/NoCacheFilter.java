@@ -15,18 +15,16 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.axelor.web;
+package com.axelor.web.servlet;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Calendar;
+import java.util.Date;
 
 import javax.inject.Singleton;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
-import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -35,67 +33,63 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.axelor.app.AppSettings;
 
-/**
- * Redirects static resource requests to it's minified version.
- *
- * <p>
- * For example, it can redirect <code>application.js</code> and
- * <code>application.css</code> to <code>application.min.js</code> and
- * <code>application.min.css</code> respectively in production mode.
- *
- */
 @Singleton
-public class MinifyFilter implements Filter {
+public class NoCacheFilter implements Filter {
 
-	private static final Pattern pattern = Pattern.compile("(.*?)\\.(js|css)$");
+	public static final String[] STATIC_URL_PATTERNS = {
+		"/static/*",
+		"/public/*",
+		"/partials/*",
+		"/images/*",
+		"/javascript/*",
+		"/lib/*",
+		"/img/*",
+		"/ico/*",
+		"/css/*",
+		"/js/*",
+		"*.js",
+		"*.css",
+		"*.png",
+		"*.jpg"
+	};
+
+	private static final String CACHE_BUSTER_PARAM = "" + Calendar.getInstance().getTimeInMillis();
 
 	private boolean production;
-	private String contextPath;
-	private int contextLength;
 
 	@Override
 	public void init(FilterConfig filterConfig) throws ServletException {
-		production = AppSettings.get().isProduction();
-		contextPath = filterConfig.getServletContext().getContextPath();
-		contextLength = contextPath.length();
+		this.production = AppSettings.get().isProduction();
 	}
 
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
-
-		if (!production) {
-			chain.doFilter(request, response);
-			return;
-		}
-
+		
 		final HttpServletRequest req = (HttpServletRequest) request;
 		final HttpServletResponse res = (HttpServletResponse) response;
 
-		final String path = req.getRequestURI();
-		final Matcher matcher = pattern.matcher(path);
+		final String uri = req.getRequestURI();
+		final boolean busted = req.getParameterMap().containsKey(CACHE_BUSTER_PARAM);
 
-		if (!matcher.matches()) {
-			chain.doFilter(request, response);
+		// if gzip bundle, set content-encoding header
+		if (uri.contains(".gzip.")) {
+			res.setHeader("Content-Encoding", "gzip");
+		}
+
+		if (production && !busted) {
+			res.sendRedirect(uri + "?" + CACHE_BUSTER_PARAM);
 			return;
 		}
 
-		final String minified = matcher.group(1).substring(contextLength) + ".min." + matcher.group(2);
-
-		if (exists(minified, req.getServletContext())) {
-			res.sendRedirect(contextPath + minified);
-			return;
+		if (!production) {
+			res.setHeader("Expires", "Fri, 01 Jan 1990 00:00:00 GMT");
+	        res.setHeader("Last-Modified", new Date().toString());
+	        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0");
+	        res.setHeader("Pragma", "no-cache");
 		}
 
-		chain.doFilter(request, response);
-	}
-
-	private boolean exists(String path, ServletContext context) {
-		try {
-			return context.getResource(path) != null;
-		} catch (MalformedURLException e) {
-			return false;
-		}
+        chain.doFilter(request, response);
 	}
 
 	@Override
