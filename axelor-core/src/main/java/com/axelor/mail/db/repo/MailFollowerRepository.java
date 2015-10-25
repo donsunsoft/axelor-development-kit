@@ -18,16 +18,21 @@
 package com.axelor.mail.db.repo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.axelor.auth.AuthUtils;
 import com.axelor.auth.db.User;
+import com.axelor.db.EntityHelper;
 import com.axelor.db.JpaRepository;
 import com.axelor.db.Model;
 import com.axelor.inject.Beans;
+import com.axelor.mail.db.MailAddress;
 import com.axelor.mail.db.MailFollower;
 import com.axelor.mail.db.MailGroup;
+import com.axelor.mail.db.MailMessage;
+import com.axelor.mail.service.MailService;
 import com.axelor.meta.db.MetaAction;
 import com.axelor.meta.db.MetaMenu;
 import com.axelor.meta.db.repo.MetaActionRepository;
@@ -46,35 +51,113 @@ public class MailFollowerRepository extends JpaRepository<MailFollower> {
 	}
 
 	public List<MailFollower> findAll(Model entity, int limit) {
+		if (entity == null) {
+			return new ArrayList<>();
+		}
+
+		final Long relatedId;
+		final String relatedModel;
+
+		if (entity instanceof MailMessage) {
+			relatedId = ((MailMessage) entity).getRelatedId();
+			relatedModel = ((MailMessage) entity).getRelatedModel();
+		} else {
+			relatedId = entity.getId();
+			relatedModel = EntityHelper.getEntityClass(entity).getName();
+		}
+
+		if (relatedId == null || relatedModel == null) {
+			return new ArrayList<>();
+		}
+
 		return all().filter("self.relatedModel = ? AND self.relatedId = ?",
-				entity.getClass().getName(), entity.getId()).fetch(limit);
+				relatedModel, relatedId).fetch(limit);
 	}
 
 	public MailFollower findOne(Model entity, User user) {
-		MailFollower follower = all()
-				.filter("self.relatedId = ? AND self.relatedModel = ? AND self.user.id = ?",
-						entity.getId(), entity.getClass().getName(),
-						user.getId()).fetchOne();
-		return follower;
+		if (entity == null || user == null) {
+			return null;
+		}
+
+		final Long relatedId;
+		final String relatedModel;
+
+		if (entity instanceof MailMessage) {
+			relatedId = ((MailMessage) entity).getRelatedId();
+			relatedModel = ((MailMessage) entity).getRelatedModel();
+		} else {
+			relatedId = entity.getId();
+			relatedModel = EntityHelper.getEntityClass(entity).getName();
+		}
+
+		if (relatedId == null || relatedModel == null) {
+			return null;
+		}
+
+		return all().filter("self.relatedId = ? AND self.relatedModel = ? AND self.user.id = ?", relatedId,
+				relatedModel, user.getId()).fetchOne();
+	}
+
+	public MailFollower findOne(Model entity, MailAddress address) {
+		if (entity == null || address == null) {
+			return null;
+		}
+
+		final Long relatedId;
+		final String relatedModel;
+
+		if (entity instanceof MailMessage) {
+			relatedId = ((MailMessage) entity).getRelatedId();
+			relatedModel = ((MailMessage) entity).getRelatedModel();
+		} else {
+			relatedId = entity.getId();
+			relatedModel = EntityHelper.getEntityClass(entity).getName();
+		}
+
+		if (relatedId == null || relatedModel == null) {
+			return null;
+		}
+
+		return all().filter("self.relatedId = ? AND self.relatedModel = ? AND self.email.address = ?", relatedId,
+				relatedModel, address.getAddress()).fetchOne();
 	}
 
 	public List<Map<String, Object>> findFollowers(Model entity) {
-
 		if (entity == null || entity.getId() == null) {
 			return null;
 		}
 
-		final List<MailFollower> users = findAll(entity);
-
-		if (users == null || users.isEmpty()) {
+		final List<MailFollower> followers = findAll(entity);
+		if (followers == null || followers.isEmpty()) {
 			return null;
 		}
 
 		final List<Map<String, Object>> all = new ArrayList<>();
-		for (MailFollower follower : users) {
-			if (follower.getArchived() == Boolean.FALSE) {
-				all.add(Resource.toMapCompact(follower.getUser()));
+		final MailService mailService = Beans.get(MailService.class);
+		final MetaActionRepository actionRepo = Beans.get(MetaActionRepository.class);
+
+		for (MailFollower follower : followers) {
+			if (follower.getArchived() == Boolean.TRUE) {
+				continue;
 			}
+			final MailAddress email = follower.getEmail();
+			final User user = follower.getUser();
+			final Model author = (user == null && email != null) ? mailService.resolve(email.getAddress()) : user;
+			if (author == null) {
+				continue;
+			}
+			final Map<String, Object> details = new HashMap<>();
+			final String authorModel = EntityHelper.getEntityClass(author).getName();
+			final MetaAction authorAction = actionRepo.all()
+					.filter("self.type = 'action-view' and self.model = ?", authorModel).fetchOne();
+			if (authorAction != null) {
+				details.put("$authorAction", authorAction.getName());
+			}
+			details.put("$authorModel", authorModel);
+			details.put("id", follower.getId());
+			details.put("$author", Resource.toMapCompact(author));
+			details.put("email", email);
+			all.add(details);
 		}
 
 		return all;
@@ -160,6 +243,28 @@ public class MailFollowerRepository extends JpaRepository<MailFollower> {
 	}
 
 	@Transactional
+	public void follow(Model entity, MailAddress address) {
+		MailFollower follower = findOne(entity, address);
+		if (follower != null && follower.getArchived() == Boolean.FALSE) {
+			return;
+		}
+
+		if (follower == null) {
+			follower = new MailFollower();
+		}
+
+		final MailAddressRepository addresses = Beans.get(MailAddressRepository.class);
+		final MailAddress managed = addresses.findOrCreate(address.getAddress(), address.getPersonal());
+
+		follower.setArchived(false);
+		follower.setRelatedId(entity.getId());
+		follower.setRelatedModel(entity.getClass().getName());
+		follower.setEmail(managed);
+
+		save(follower);
+	}
+
+	@Transactional
 	public void unfollow(Model entity, User user) {
 
 		if (!isFollowing(entity, user)) {
@@ -175,6 +280,14 @@ public class MailFollowerRepository extends JpaRepository<MailFollower> {
 		// remove menu
 		if (entity instanceof MailGroup) {
 			createOrDeleteMenu((MailGroup) entity, true);
+		}
+	}
+
+	@Transactional
+	public void unfollow(MailFollower follower) {
+		if (follower != null) {
+			follower.setArchived(true);
+			save(follower);
 		}
 	}
 

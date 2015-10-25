@@ -15,8 +15,7 @@ libs.slf4j_simple	= ["org.slf4j:slf4j-api:1.7.7", "org.slf4j:slf4j-simple:1.7.7"
 libs.slf4j_logback	= ["org.slf4j:slf4j-api:1.7.7", "ch.qos.logback:logback-classic:1.1.2"]
 
 // Guava
-libs.guava = "com.google.guava:guava:18.0"
-libs.jsr305 = "com.google.code.findbugs:jsr305:3.0.0"
+libs.guava = ["com.google.guava:guava:18.0", "com.google.code.findbugs:jsr305:3.0.1"]
 
 // joda
 libs.joda_time = ["joda-time:joda-time:2.3", "org.jadira.usertype:usertype.core:3.0.0.GA"]
@@ -41,8 +40,8 @@ libs.javax_servlet = "javax.servlet:javax.servlet-api:3.0.1"
 libs.javax_servlet_jsp = "javax.servlet.jsp:javax.servlet.jsp-api:2.2.1"
 libs.javax_validation = "javax.validation:validation-api:1.1.0.Final"
 libs.javax_el = ["javax.el:javax.el-api:3.0.0", "org.glassfish:javax.el:3.0.0"]
-libs.javax_mail = ["javax.mail:mail:1.4.7", "javax.mail:javax.mail-api:1.5.1"]
-libs.subetha_smtp =	"org.subethamail:subethasmtp:3.1.7"
+libs.javax_mail = ["com.sun.mail:javax.mail:1.5.4"]
+libs.greenmail = "com.icegreen:greenmail:1.4.1"
 
 // jdbc
 libs.jdbc_hsqldb = "org.hsqldb:hsqldb:2.3.3"
@@ -124,6 +123,9 @@ libs.xstream = "com.thoughtworks.xstream:xstream:1.4.7"
 
 // opencsv
 libs.opencsv = "net.sf.opencsv:opencsv:2.3"
+
+// jsoup for html parsing & sanitize
+libs.jsoup = "org.jsoup:jsoup:1.8.3"
 
 // StringTemplate
 libs.ST4 = "org.antlr:ST4:4.0.7"

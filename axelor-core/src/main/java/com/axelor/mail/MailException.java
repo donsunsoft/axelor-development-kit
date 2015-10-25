@@ -15,32 +15,21 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.axelor.gradle
+package com.axelor.mail;
 
-import org.gradle.api.Project
+public class MailException extends Exception {
 
-class ModulePlugin extends BasePlugin {
+	private static final long serialVersionUID = 4370214485902946867L;
 
-	void apply(Project project) {
+	public MailException(String message) {
+		super(message, null);
+	}
 
-		super.apply(project)
+	public MailException(Throwable cause) {
+		super(cause);
+	}
 
-		// add common dependencies
-
-		Object core = null
-		Object test = null
-
-		try {
-			core = project.project(":axelor-core")
-			test = project.project(":axelor-test")
-		} catch (Exception e) {
-			core = "com.axelor:axelor-core:${sdkVersion}"
-			test = "com.axelor:axelor-test:${sdkVersion}"
-		}
-
-		project.dependencies {
-			compile core
-			testCompile test
-		}
-    }
+	public MailException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

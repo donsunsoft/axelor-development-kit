@@ -15,32 +15,27 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package com.axelor.gradle
+package com.axelor.mail.service;
 
-import org.gradle.api.Project
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
-class ModulePlugin extends BasePlugin {
+import com.axelor.inject.Beans;
 
-	void apply(Project project) {
+/**
+ * Job to fetch emails.
+ *
+ */
+public class MailFetchJob implements Job {
 
-		super.apply(project)
-
-		// add common dependencies
-
-		Object core = null
-		Object test = null
-
+	@Override
+	public void execute(JobExecutionContext context) throws JobExecutionException {
+		final MailService service = Beans.get(MailService.class);
 		try {
-			core = project.project(":axelor-core")
-			test = project.project(":axelor-test")
+			service.fetch();
 		} catch (Exception e) {
-			core = "com.axelor:axelor-core:${sdkVersion}"
-			test = "com.axelor:axelor-test:${sdkVersion}"
+			throw new JobExecutionException(e);
 		}
-
-		project.dependencies {
-			compile core
-			testCompile test
-		}
-    }
+	}
 }

@@ -63,9 +63,15 @@
 	list-style: none;
 }
 
-.mail-composer-files ul .fa-close {
+.mail-editor .mail-files {
+  min-height: 18px;
+}
+
+.mail-files i {
+	margin-right: 4px;
+}
+.mail-files i.fa-close {
 	cursor: pointer;
-	margin-right: 6px;
 }
 
 .mail-thread .avatar {
@@ -202,10 +208,6 @@
 	border-bottom: 1px solid #ddd;
 }
 
-.mail-message .mail-message-header .track-tags {
-	margin-left: 8px;
-}
-
 .mail-message .mail-message-header .subject:after {
 	content: ' : ';
 }
@@ -223,6 +225,24 @@
 
 .mail-message .track-tags .label {
 	margin-right: 2px;
+}
+
+.mail-message-body a.show-full {
+    display: inline-block;
+    background-color: #f1f1f1;
+    border: 1px solid #ddd;
+    line-height: 8px;
+    outline: none;
+    padding: 1px 6px 0px;
+    margin-top: 6px;
+}
+.mail-message-body a.show-full:hover {
+  background-color: #d8d8d8;
+  border-color: #cdcdcd;
+}
+
+.mail-message-body a.show-full i {
+  line-height: 6px;
 }
 
 .form-mail .fade {

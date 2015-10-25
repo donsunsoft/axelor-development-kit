@@ -57,9 +57,9 @@ import org.jboss.resteasy.plugins.providers.multipart.MultipartFormDataInput;
 
 import com.axelor.app.AppSettings;
 import com.axelor.auth.AuthUtils;
-import com.axelor.auth.db.User;
 import com.axelor.common.ClassUtils;
 import com.axelor.common.FileUtils;
+import com.axelor.common.StringUtils;
 import com.axelor.db.JPA;
 import com.axelor.db.JpaRepository;
 import com.axelor.db.Model;
@@ -67,9 +67,12 @@ import com.axelor.db.Query;
 import com.axelor.db.Repository;
 import com.axelor.db.mapper.Mapper;
 import com.axelor.inject.Beans;
+import com.axelor.mail.db.MailAddress;
+import com.axelor.mail.db.MailFollower;
 import com.axelor.mail.db.MailMessage;
 import com.axelor.mail.db.repo.MailFollowerRepository;
 import com.axelor.mail.db.repo.MailMessageRepository;
+import com.axelor.mail.service.MailService;
 import com.axelor.mail.web.MailController;
 import com.axelor.meta.ActionHandler;
 import com.axelor.meta.MetaFiles;
@@ -581,61 +584,65 @@ public class RestService extends ResourceService {
 		return response;
 	}
 
-	@SuppressWarnings("rawtypes")
 	@POST
 	@Path("{id}/follow")
+	@SuppressWarnings("all")
 	public Response messageFollow(@PathParam("id") long id, Request request) {
 
-		@SuppressWarnings("all")
 		final Repository<?> repo = JpaRepository.of((Class) getResource().getModel());
-		final Repository<User> users = JpaRepository.of(User.class);
 		final Model entity = repo.find(id);
 
-		List<Object> records = request.getRecords();
-		if (records == null || records.isEmpty()) {
-			records = new ArrayList<>();
-			records.add(AuthUtils.getUser());
+		if (entity == null) {
+			return messageFollowers(id);
+		}
+		if (request.getData() == null) {
+			followers.follow(entity, AuthUtils.getUser());
+			return messageFollowers(id);
 		}
 
-		for (Object item  : records) {
-			User user = null;
-			if (item instanceof User) {
-				user = (User) item;
-			} else if (item instanceof Map){
-				user = users.find(Longs.tryParse(((Map) item).get("id").toString()));
-			}
-			if (user != null) {
-				followers.follow(entity, user);
+		final MailMessage message = Mapper.toBean(MailMessage.class, request.getData());
+		if (message == null || message.getRecipients() == null || message.getRecipients().isEmpty()) {
+			return messageFollowers(id);
+		}
+
+		for (MailAddress address : message.getRecipients()) {
+			followers.follow(entity, address);
+		}
+
+		if (!StringUtils.isBlank(message.getBody())) {
+			final MailService mailService = Beans.get(MailService.class);
+			try {
+				mailService.send(message);
+			} catch (Exception e) {
+				LOG.error("Unable to send email message to new followers", e);
 			}
 		}
 
 		return messageFollowers(id);
 	}
 
-	@SuppressWarnings("rawtypes")
 	@POST
 	@Path("{id}/unfollow")
+	@SuppressWarnings("all")
 	public Response messageUnfollow(@PathParam("id") long id, Request request) {
 		@SuppressWarnings("all")
-		final Repository<?> repo = JpaRepository.of((Class) getResource().getModel());
-		final Repository<User> users = JpaRepository.of(User.class);
-		final Model entity = repo.find(id);
 
-		List<Object> records = request.getRecords();
+		final Repository<?> repo = JpaRepository.of((Class) getResource().getModel());
+		final Model entity = repo.find(id);
+		if (entity == null) {
+			return messageFollowers(id);
+		}
+
+		final List<Object> records = request.getRecords();
 		if (records == null || records.isEmpty()) {
-			records = new ArrayList<>();
-			records.add(AuthUtils.getUser());
+			followers.unfollow(entity, AuthUtils.getUser());
+			return messageFollowers(id);
 		}
 
 		for (Object item  : records) {
-			User user = null;
-			if (item instanceof User) {
-				user = (User) item;
-			} else if (item instanceof Map){
-				user = users.find(Longs.tryParse(((Map) item).get("id").toString()));
-			}
-			if (user != null) {
-				followers.unfollow(entity, user);
+			final MailFollower follower = followers.find(Longs.tryParse(item.toString()));
+			if (follower != null) {
+				followers.unfollow(follower);
 			}
 		}
 

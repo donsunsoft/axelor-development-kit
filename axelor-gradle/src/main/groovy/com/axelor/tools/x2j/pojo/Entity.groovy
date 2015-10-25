@@ -155,9 +155,6 @@ class Entity {
 			propertyMap.put("id", Property.idProperty(this));
 			properties.add(propertyMap.get("id"));
 		} else {
-			if (!strategy || strategy == 'SINGLE') {
-				table = null
-			}
 			hasExtends = true
 			importType("com.axelor.db.EntityHelper")
 		}
@@ -203,9 +200,13 @@ class Entity {
 	void merge(Entity other) {
 		
 		for (Property prop : other.properties) {
-			if (!propertyMap.containsKey(prop.name)) {
+			Property existing = propertyMap.get(prop.name)
+			if (existing == null || (existing.virtual && existing.type == prop.type && existing.target == prop.target)) {
 				prop.ownEntity = prop.entity
 				prop.entity = this
+				if (existing != null) {
+					properties.remove(existing)
+				}
 				properties.add(prop)
 				propertyMap[prop.name] = prop
 				if (prop.isNameField()) {
@@ -482,7 +483,8 @@ class Entity {
 	}
 
 	Annotation $strategy() {
-		if (!strategy) return null
+		// Inheritance strategy can be specified on root entity only
+		if (!strategy || hasExtends) return null
 		String type = "SINGLE_TABLE"
 		if (strategy == "JOINED") type = "JOINED"
 		if (strategy == "CLASS") type = "TABLE_PER_CLASS"

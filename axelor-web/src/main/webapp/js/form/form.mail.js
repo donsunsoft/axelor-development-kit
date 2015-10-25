@@ -179,7 +179,8 @@ ui.directive('uiMailMessage', function () {
 		replace: true,
 		link: function (scope, element, attrs) {
 
-			var body = scope.message.body || "{}";
+			var message = scope.message;
+			var body = message.body || "{}";
 			if (body.indexOf("{") === 0) {
 				body = angular.fromJson(body);
 				body.tags = _.map(body.tags, function (tag) {
@@ -193,13 +194,20 @@ ui.directive('uiMailMessage', function () {
 				scope.body = null;
 			}
 
+			message.$title = (body||{}).title || message.subject;
+
+			scope.showFull = !message.summary;
+			scope.onShowFull = function () {
+				scope.showFull = true;
+			};
+
 			setTimeout(function () {
 				element.addClass('fadeIn');
 			});
 		},
 		template: "" +
 			"<div class='fade'>" +
-				"<a href='' class='pull-left avatar' title='{{::$userName(message.createdBy)}}' ng-click='showUser(message.author)'>" +
+				"<a href='' class='pull-left avatar' title='{{::$userName(message)}}' ng-click='showAuthor(message)'>" +
 					"<img ng-src='{{::message.$avatar}}' width='32px'>" +
 				"</a>" +
 				"<div class='mail-message'>" +
@@ -231,13 +239,13 @@ ui.directive('uiMailMessage', function () {
 				            "</ul>" +
 						"</div>" +
 					"</div>" +
-					"<div class='mail-message-header' ng-if='::message.$name || body.title'>" +
-						"<span class='subject' ng-if='::message.$name'>" +
-							"<a ng-if='message.relatedId' href='#ds/form::{{::message.relatedModel}}/edit/{{::message.relatedId}}'>{{::message.$name}}</a>" +
-							"<span ng-if='::!message.relatedId'>{{::message.$name}}</span>" +
-							"<span ng-if='::message.subject'> : {{::message.subject}}</span>" +
+					"<div class='mail-message-header' ng-if='::message.$name || message.$title'>" +
+						"<span class='subject'>" +
+							"<a ng-if='message.relatedId && message.$name' href='#ds/form::{{::message.relatedModel}}/edit/{{::message.relatedId}}'>{{::message.$name}}</a>" +
+							"<span ng-if='::!message.relatedId && message.$name'>{{::message.$name}}</span>" +
+							"<span ng-if='::message.$name'> - </span>" +
+							"<span ng-if='::message.$title'>{{::message.$title}}</span>" +
 						"</span>" +
-						"<span class='track-message'>{{:: _t(body.title) }}</span>" +
 						"<span class='track-tags'>" +
 							"<span class='label' ng-class='::item.css' ng-repeat='item in ::body.tags'>{{:: _t(item.title) }}</span>" +
 						"</span>" +
@@ -248,20 +256,20 @@ ui.directive('uiMailMessage', function () {
 								"<strong>{{:: _t(item.title) }}</strong> : <span ng-bind-html='::item.value'></span>" +
 							"</li>" +
 						"</ul>" +
-						"<div ng-if='!body' ui-bind-template x-text='message.body'></div>" +
+						"<div ng-if='!body'>" +
+							"<div ng-if='message.summary && !showFull' ui-bind-template x-text='message.summary'></div>" +
+							"<div ng-if='!message.summary || showFull' ui-bind-template x-text='message.body'></div>" +
+							"<a ng-if='!showFull' href='' ng-click='onShowFull()' class='show-full'><i class='fa fa-ellipsis-h'></i></a>" +
+						"</div>" +
 						"<div class='mail-message-files' ng-show='::message.$files.length'>" +
-							"<ul class='inline'>" +
-								"<li ng-repeat='file in ::message.$files'>" +
-									"<i class='fa fa-paperclip'></i> <a href='' ng-click='onDownload(file)'>{{::file.fileName}}</a>" +
-								"</li>" +
-							"</ul>" +
+							"<div ui-mail-files x-removable='false' x-files='message.$files' class='inline'></div>" +
 						"</div>" +
 						"<div class='mail-message-footer'>" +
 							"<span ng-if='message.$numReplies' class='pull-right'>" +
 								"<a href='' ng-click='onReplies(message)'>{{formatNumReplies(message)}}</a>" +
 							"</span>" +
 							"<span>" +
-								"<a href='' ng-click='showUser(message.author)'>{{::$userName(message.author)}}</a> " +
+								"<a href='' ng-click='showAuthor(message)'>{{::$userName(message)}}</a> " +
 								"<span>{{formatEvent(message)}}</span>" +
 							"</span>" +
 						"</div>" +
@@ -427,18 +435,6 @@ ui.formWidget('uiMailMessages', {
 			}
 		});
 	}],
-	link: function (scope, element, attrs) {
-
-		scope.onDownload = function (file) {
-			var frame = $("<iframe>").hide().appendTo(element);
-			var url = "ws/rest/com.axelor.meta.db.MetaFile/" + file.id + "/content/download";
-			frame.attr("src", url);
-			setTimeout(function(){
-				frame.attr("src", "");
-				frame.remove();
-			}, 100);
-		};
-	},
 	template_readonly: null,
 	template_editable: null,
 	template:
@@ -482,6 +478,204 @@ ui.directive('uiMailUploader', ["$compile", function ($compile) {
 	};
 }]);
 
+ui.directive('uiMailFiles', [function () {
+	return {
+		scope: {
+			files: "=",
+			removable: "@"
+		},
+		link: function (scope, element, attrs) {
+
+			scope.onRemoveFile = function (file) {
+				var files = scope.files || [];
+				var i = files.indexOf(file);
+				if (i > -1) {
+					files.splice(i, 1);
+				}
+			};
+
+			scope.onDownload = function (file) {
+				var url = "ws/rest/com.axelor.meta.db.MetaFile/" + file.id + "/content/download";
+				ui.download(url, file.fileName);
+			};
+		},
+		replace: true,
+		template:
+			"<ul class='mail-files'>" +
+				"<li ng-repeat='file in files'>" +
+					"<i class='fa fa-close' ng-if='removable != \"false\"' ng-click='onRemoveFile(file)'></i>" +
+					"<i class='fa fa-paperclip' ng-if='removable == \"false\"'></i>" +
+					"<a href='' ng-click='onDownload(file)'>{{file.fileName}}</a>" +
+				"</li>" +
+			"</ul>"
+	};
+}]);
+
+ui.directive('uiMailEditor', ["$compile", function ($compile) {
+
+	return function (scope, element, attrs) {
+
+		var title = scope.$eval(attrs.emailTitle) || _t("Email");
+		var sendTitle = scope.$eval(attrs.sendTitle) || _t("Send");
+
+		scope._viewParams = {
+			model: "com.axelor.mail.db.MailMessage",
+			type: "form",
+			fields: {
+			},
+			views: [{
+				type: "form",
+				title: title,
+				css: "mail-editor",
+				items: [{
+					type: "panel",
+					showFrame: false,
+					itemSpan: 12,
+					items: [{
+						name: "recipients",
+						widget: "mail-select",
+						showTitle: false,
+						placeholder: _t("Recipients")
+					}, {
+						name: "subject",
+						showTitle: false,
+						placeholder: _t("Subject")
+					}, {
+						name: "body",
+						showTitle: false,
+						widget: "html",
+						height: 250
+					}, {
+						name: "files",
+						showTitle: false,
+						widget: "mail-file-list"
+					}]
+				}]
+			}]
+		};
+
+		var popup = null;
+
+		scope.$on("$destroy", function () {
+			if (popup) {
+				popup.$destroy();
+				popup = null;
+			}
+		});
+
+		scope.select = function (record) {
+
+		};
+
+		scope.onEditEmail = function (record, onSelect) {
+
+			if (popup === null) {
+				popup = scope.$new();
+				popup.fields = {};
+
+				var editor = $compile('<div ui-editor-popup x-buttons="buttons"></div>')(popup);
+				var buttons = editor.parent().find(".ui-dialog-buttonpane");
+
+				buttons.find(".button-ok").text(sendTitle);
+
+				var attach = $('<button type="button" class="btn"><i class="fa fa-paperclip"></i></button>')
+				.click(function() {
+					var uploader = $compile('<div ui-dms-popup x-on-select="onSelectFiles"></div>')(popup);
+					uploader.isolateScope().showPopup();
+					uploader.isolateScope().applyLater();
+				});
+
+				$('<div class="pull-left ui-dialog-buttonset" style="float: left;"></div>')
+					.append(attach)
+					.appendTo(buttons);
+
+				popup = editor.isolateScope();
+				popup.onSelectFiles = function (files) {
+					var rec = popup.record || {};
+					var all = rec.files || [];
+					rec.files = all.concat(files);
+					popup.record = rec;
+				};
+			}
+
+			popup.show(record, onSelect);
+		};
+	};
+}]);
+
+ui.formWidget('uiMailFileList', {
+
+	link: function () {
+
+	},
+	template_readonly: null,
+	template_editable: null,
+	template: "<div>" +
+			"<div ui-mail-files x-files='record.files' class='inline'></div>" +
+			"</div>"
+});
+
+ui.formInput('uiMailSelect', 'MultiSelect', {
+
+	init: function (scope) {
+		this._super.apply(this, arguments);
+		scope.isReadonly = function () { return false; }
+	},
+
+	link_editable: function (scope, element, attrs, model) {
+		this._super.apply(this, arguments);
+
+		var field = scope.field;
+		var selectionMap = {};
+
+		scope.formatItem = function(value) {
+			if (!value) { return ""; }
+			var item = selectionMap[value];
+			if (item) {
+				return item.label || value;
+			}
+			return item;
+		};
+
+		var handleSelect = scope.handleSelect;
+		scope.handleSelect = function(e, ui) {
+			var item = ui.item;
+			selectionMap[item.value] = item;
+			// store selection map in record to find display names
+			if (scope.record) {
+				scope.record["$" + field.name + "Map"] = selectionMap;
+			}
+			return handleSelect.apply(scope, arguments);
+		};
+
+		scope.loadSelection = function(request, response) {
+
+			var $http = scope._dataSource._http;
+			var data = {
+				search: request.term,
+				selected: _.pluck(scope.getSelection(), "value")
+			};
+
+			if (_.isEmpty(data.selected)) {
+				selectionMap = {};
+			}
+
+			$http.post("ws/search/emails", { data: data }).then(function (resp) {
+				var res = resp.data;
+				var items = _.map(res.data, function (item) {
+					return {
+						label: item.personal || item.address,
+						value: item.address
+					};
+				});
+				response(items);
+			}, function (err) {
+				response([]);
+			});
+		};
+	}
+});
+
 ui.formWidget('uiMailComposer', {
 	scope: true,
 	require: '^uiMailMessages',
@@ -519,6 +713,15 @@ ui.formWidget('uiMailComposer', {
 		};
 
 		$scope.onPost = function () {
+			var text = $scope.post.replace(/\n/g, '<br>');
+			var files = $scope.files;
+			return $scope.sendEmail({
+				body: text,
+				files: files
+			});
+		};
+
+		$scope.sendEmail = function (email) {
 
 			var ds = dataSource();
 			var record = dataRecord();
@@ -528,13 +731,15 @@ ui.formWidget('uiMailComposer', {
 				return;
 			}
 
-			var text = $scope.post.replace(/\n/g, '<br>');
-			var files = _.pluck($scope.files, 'id');
+			var text = email.body || email.post;
+			var files = _.pluck(email.files, "id");
+			var recipients = email.recipients;
 
-			ds.messagePost(record.id, text, {
+			return ds.messagePost(record.id, text, {
 				type: 'comment',
 				parent: parent.id && parent,
-				files: files
+				files: files,
+				recipients: recipients
 			}).success(function (res) {
 				var message = _.first(res.data);
 				var messages = $scope.$parent.messages || [];
@@ -576,27 +781,48 @@ ui.formWidget('uiMailComposer', {
 			}
 		});
 
-		scope.onRemoveFile = function (file) {
-			var i = scope.files.indexOf(file);
-			if (i > -1) {
-				scope.files.splice(i, 1);
-			}
+		function findName() {
+			var record = scope.record || {};
+			var fields = scope.fields || {};
+			var name = _.findWhere(fields, {nameColumn: true});
+			return record[name] || record.name || record.code || "";
+		}
+
+		scope.showEditor = function () {
+			var record = {
+				subject: "Re: " + findName(),
+				body: scope.post,
+				files: scope.files
+			};
+			scope.onEditEmail(record, function (record) {
+				var map = record.$recipientsMap || {};
+				var recipients = record.recipients || "";
+
+				record.recipients = _.map(recipients.split(","), function (item) {
+					var email = item.trim();
+					return _.extend({
+						address: email,
+						personal: (map[email]||{}).label || email
+					});
+				});
+
+				scope.sendEmail(record);
+			});
 		};
 	},
 	template: "" +
 		"<div class='mail-composer' ng-show='canShow()'>" +
 			"<textarea rows='1' ng-model='post' ui-textarea-auto-size class='span12' placeholder='Write your comment here'></textarea>" +
 			"<div class='mail-composer-files' ng-show='files.length'>" +
-				"<ul>" +
-				"<li ng-repeat='file in files'>" +
-					"<i class='fa fa-close' ng-click='onRemoveFile(file)'></i> <a href='' ng-click='onDowload(file)'>{{file.fileName}}</a>" +
-				"</li>" +
-				"</ul>" +
+				"<div ui-mail-files x-files='files'></div>" +
 			"</div>" +
 			"<div class='mail-composer-buttons' ng-show='canPost()'>" +
-				"<button class='btn btn-primary' ng-click='onPost()' x-translate>Post</button>" +
+				"<button type='button' class='btn btn-primary' ng-click='onPost()' x-translate>Post</button>" +
 				"<span class='btn btn-default' ui-mail-uploader ng-click='onUpload()'>" +
 					"<i class='fa fa-paperclip'></i>" +
+				"</span>" +
+				"<span class='btn btn-default' ui-mail-editor ng-click='showEditor()'>" +
+					"<i class='fa fa-pencil'></i>" +
 				"</span>" +
 			"</div>" +
 		"</div>"
@@ -608,32 +834,27 @@ ui.formWidget('uiMailFollowers', {
 	controller: ['$scope', 'ViewService', 'MessageService', function ($scope, ViewService, MessageService) {
 
 		var ds = $scope._dataSource;
-		var userSelector = null;
 
-		$scope.editorCanSave = false;
-		$scope._viewParams = {
-			model: 'com.axelor.auth.db.User',
-			viewType: 'form',
-			views: [{type: 'form'}, {type: 'grid'}]
-		};
+		$scope.emailTitle = _t("Add followers");
+		$scope.sendTitle = _t("Add");
 
 		$scope.following = false;
 		$scope.followers = [];
 
 		$scope.updateStatus = function() {
 			var followers = $scope.followers || [];
-			var found = _.findWhere(followers, {
-				code: axelor.config["user.login"]
+			var found = _.find(followers, function (item) {
+				return item.$author && item.$author.code === axelor.config["user.login"]
 			});
 			$scope.following = !!found;
 		};
 
-		$scope.select = function (records) {
+		function sendEmail(email) {
 
 			var ds = $scope._dataSource;
 			var record = $scope.record || {};
 			var promise = ds.messageFollow(record.id, {
-				records: records
+				email: email
 			});
 
 			promise.success(function (res) {
@@ -642,14 +863,31 @@ ui.formWidget('uiMailFollowers', {
 			});
 		};
 
+		function findName() {
+			var record = $scope.record || {};
+			var fields = $scope.fields || {};
+			var name = _.findWhere(fields, {nameColumn: true});
+			return record[name] || record.name || record.code || "";
+		}
+
 		$scope.onAddFollowers = function () {
+			var record = {
+				subject: _t("Follow: {0}", findName())
+			};
+			$scope.onEditEmail(record, function (record) {
 
-			if (userSelector == null) {
-				userSelector = ViewService.compile('<div ui-selector-popup x-select-mode="multi"></div>')($scope);
-			}
+				var map = record.$recipientsMap || {};
+				var recipients = record.recipients || "";
 
-			var popup = userSelector.isolateScope();
-			popup.show();
+				record.recipients = _.map(recipients.split(","), function (item) {
+					var email = item.trim();
+					return _.extend({
+						address: email,
+						personal: (map[email]||{}).label || email
+					});
+				});
+				sendEmail(record);
+			});
 		};
 
 		$scope.onFollow = function () {
@@ -663,21 +901,20 @@ ui.formWidget('uiMailFollowers', {
 			});
 		};
 
-		$scope.onUnfollow = function (user) {
-
+		$scope.onUnfollow = function (follower) {
 			axelor.dialogs.confirm(_t('Are you sure to unfollow this document?'),
 			function (confirmed) {
 				if (confirmed) {
-					doUnfollow(user);
+					doUnfollow(follower);
 				}
 			});
 		};
 
-		function doUnfollow(user) {
-
+		function doUnfollow(follower) {
+			var followerId = (follower||{}).id;
 			var record = $scope.record || {};
 			var promise = ds.messageUnfollow(record.id, {
-				records: _.compact([user])
+				records: _.compact([followerId])
 			});
 
 			promise.success(function (res) {
@@ -713,14 +950,14 @@ ui.formWidget('uiMailFollowers', {
 				"<div class='icons pull-right'>" +
 					"<i class='fa fa-star-o' ng-click='onFollow()' ng-show='!following'></i>" +
 					"<i class='fa fa-star' ng-click='onUnfollow()' ng-show='following'></i>" +
-					"<i class='fa fa-plus' ng-click='onAddFollowers()'></i>" +
+					"<i class='fa fa-plus' ui-mail-editor x-email-title='emailTitle' x-send-title='sendTitle' ng-click='onAddFollowers()'></i>" +
 				"</div>" +
 			"</div>" +
 			"</div>" +
 			"<div class='panel-body'>" +
 			"<ul class='links'>" +
 				"<li ng-repeat='follower in followers'>" +
-				"<a href='' ng-click='showUser(follower)'>{{$userName(follower)}}</a> " +
+				"<a href='' ng-click='showAuthor(follower)'>{{$userName(follower)}}</a> " +
 				"<i class='fa fa-remove' ng-click='onUnfollow(follower)'></i>" +
 				"</li>" +
 			"</ul>" +
@@ -737,20 +974,33 @@ ui.formWidget('PanelMail', {
 			return {};
 		};
 
-		$scope.showUser = function (author) {
-			if (!author) {
+		$scope.showAuthor = function (message) {
+			var msg = message || {};
+			var act = msg.$authorAction;
+			var author = msg.$author;
+			var model = msg.$authorModel;
+			if (!author || !author.id) {
 				return;
 			}
-			NavService.openTabByName("form:user-form", {
+			NavService.openTab({
+				action: act || _.uniqueId('$act'),
+				model: model,
+				viewType: "form",
+				views: [{ type: "form" }]
+			}, {
 				mode: "edit",
 				state: author.id
 			});
 		};
 
-		$scope.$userName = function (user) {
-			if (!user) return null;
+		$scope.$userName = function (message) {
+			var msg = message || {};
+			var author = msg.$author || msg.$from;
+			if (!author) {
+				return null;
+			}
 			var key = axelor.config["user.nameField"] || "name";
-			return user[key] || user.name;
+			return author.personal || author[key] || author.name || author.fullName || author.displayName;
 		};
 
 		var folder;
