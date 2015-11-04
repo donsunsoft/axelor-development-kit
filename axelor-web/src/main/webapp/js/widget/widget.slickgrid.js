@@ -370,6 +370,14 @@ var Formatters = {
 		var res = _.find(field.selectionList, function(item){
 			return cmp(item.value, value);
 		}) || {};
+
+		if (field.widget === 'ImageSelect' && res.icon) {
+			var image = "<img style='max-height: 24px;' src='" + (res.icon || res.value) + "'>";
+			if (field.labels === false) {
+				return image;
+			}
+			return image + " " + res.title;
+		}
 		return res.title;
 	},
 
@@ -2419,6 +2427,16 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 				}
 				unwatch();
 				schema = scope.view;
+
+				var field = handler.field || {};
+				if (field.canMove !== undefined) {
+					schema.canMove = field.canMove;
+				}
+				if (field.editable !== undefined) {
+					schema.editable = field.editable;
+				}
+				schema.orderBy = field.orderBy || schema.orderBy;
+
 				element.show();
 				doInit();
 			});
