@@ -248,6 +248,10 @@ var NestedEditor = {
 
 		var configure = _.once(function (nested) {
 
+			// make sure to initialize editor form earlier
+			// otherwise any action trying to set values will fail
+			nestedEdit(model.$viewValue, false);
+
 			//FIX: select on M2O doesn't apply to nested editor
 			var unwatchId = scope.$watch(attrs.ngModel + '.id', function(id, old){
 				if (id === old) {
@@ -375,7 +379,6 @@ var NestedEditor = {
 
 			promise.then(function() {
 				configure(nested);
-				nestedEdit(model.$viewValue, false);
 				scope.waitForActions(doRender, 100);
 			});
 		};
