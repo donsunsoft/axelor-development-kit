@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <domain-models xmlns="http://axelor.com/xml/ns/domain-models"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://axelor.com/xml/ns/domain-models http://axelor.com/xml/ns/domain-models/domain-models_3.0.xsd">
+  xsi:schemaLocation="http://axelor.com/xml/ns/domain-models http://axelor.com/xml/ns/domain-models/domain-models_4.0.xsd">
 
-  <module name="contact" package="com.axelor.contact.db" />
+  <module name="contact" package="com.axelor.contact.db"/>
   
-  <entity name="Title" cachable="true" repository="abstract">
+  <entity name="Title" cachable="true" implements="java.io.Serializable" repository="abstract">
     <![CDATA[
     This class represents the name initial like Mr., Mrs. etc.
     
@@ -57,7 +57,6 @@
   <entity name="Group" repository="none">
     <string name="code" required="true" unique="true" min="2" />
     <string name="name" required="true" unique="true" min="2" />
-    <one-to-one name="test1" ref="Title" mappedBy="testG"/>
     <many-to-many name="contacts" ref="Contact"/>
   </entity>
 
@@ -73,23 +72,49 @@
     <finder-method name="findByNameAndCode" using="code, name" all="true"/>
   </entity>
 
-  <entity name="Contact" sequential="true" lang="groovy" hashAll="true" cachable="false">
+  <entity name="Contact" sequential="true" hashAll="true" cachable="false">
     <string name="empId" sequence="emp.seq"/>
     <many-to-one name="title" ref="Title" unique="true" />
     <string name="firstName" required="true" initParam="true"/>
     <string name="lastName" required="true" initParam="true"/>
     <string name="fullName" namecolumn="true" search="firstName,lastName" transient="true">
       <![CDATA[
-      title ? "$title.name $firstName $lastName" : "$firstName $lastName"
+      return title ? title.getName() + " " + firstName + " " + lastName : firstName + " " + lastName
+      ]]>
+    </string>
+    <string name="name" namecolumn="true" search="firstName,lastName">
+      <![CDATA[
+      return getFullName();
       ]]>
     </string>
     <string name="email" required="true" unique="true" initParam="true" massUpdate="true"/>
     <string name="phone" max="20"  hashKey="false" massUpdate="true"/>
     <string name="notes" multiline="true" title="About Me" />
     <many-to-many name="groups" ref="Group" mappedBy="contacts"/>
-    <one-to-many name="addresses" ref="Address" mappedBy="contact" orderBy="area" />
+
+    <!-- test o2m fields with mappedBy & orphanRemoval -->
+    <one-to-many name="addresses" ref="Address" mappedBy="contact" orderBy="area"/>
+    <one-to-many name="addresses2" ref="Address" mappedBy="contact" orderBy="area" orphanRemoval="true"/>
+    <one-to-many name="addresses3" ref="Address" mappedBy="contact" orderBy="area" orphanRemoval="false"/>
+    <one-to-many name="addresses4" ref="Address" orderBy="area" />
+    <one-to-many name="addresses5" ref="Address" orderBy="area" orphanRemoval="true" />
+    <one-to-many name="addresses6" ref="Address" orderBy="area" orphanRemoval="false" />
+
     <index name="IDX_NAMES" columns="firstName,lastName,fullName"/>
     <index columns="id,fullName,email"/>
+    <track>
+      <field name="fullName" />
+      <field name="email" />
+      <field name="phone" if="!email" on="UPDATE" />
+      <message if="true" on="CREATE">Contact created.</message>
+      <message if="firstName == 'admin'" on="UPDATE" tag="important">Admin</message>
+      <message if="some == 'thing'" tag="success" fields="email,phone">Success</message>
+      <message if="!some" tag="important" fields="email">Failed</message>
+    </track>
+  </entity>
+
+  <entity name="Contact">
+    <string name="name" />
   </entity>
 
   <entity name="Address" hashAll="true">
@@ -98,7 +123,7 @@
     <string name="area" required="true" />
     <string name="city" required="true" />
     <many-to-one name="country" ref="Country" required="true" />
-    <many-to-one name="user" ref="com.axelor.auth.db.User" />
+    <many-to-one name="user" column="user_id" ref="com.axelor.auth.db.User" />
     <finder-method name="findByContact" using="long:contactId, String:name" filter="self.customer.id = :contactId OR self.customer.fullName = :name" all="true"/>
     <finder-method name="findByContact" using="String:email" filter="self.customer.email = :email" all="true"/>
 
@@ -106,8 +131,20 @@
     <finder-method name="findByUser" using="user" all="false"/>
     
   </entity>
-  
-  <entity name="ConstraintTester">
+
+  <entity name="Account">
+    <boolean name="active" />
+    <string name="name" required="true" />
+    <one-to-one name="config" ref="AccountConfig" />
+  </entity>
+  <entity name="AccountConfig">
+    <string name="name" required="true" />
+    <one-to-one name="account" ref="AccountConfig" mappedBy="config" />
+    <one-to-one name="account2" ref="AccountConfig" mappedBy="config" orphanRemoval="true" />
+    <one-to-one name="account3" ref="AccountConfig" mappedBy="config" orphanRemoval="false" />
+  </entity>
+
+  <entity name="ConstraintTester" persistable="false">
     <string name="someName"/>
     <string name="anotherName" column="another"/>
     <many-to-one name="myTitle" ref="Title"/>
@@ -116,12 +153,16 @@
   
   <!-- inheritance -->
   <entity name="Hello" strategy="SINGLE">
-    <string name="title" required="true"/>
+    <string name="title" required="true" translatable="true"/>
     <string name="message" required="true"/>
   </entity>
   
   <entity name="HelloWorld" extends="Hello" strategy="CLASS" hashAll="true">
     <string name="tags"/>
+    <string name="hrCode" />
+    <string name="hRCode" />
+    <string name="URL" />
+    <finder-method name="findBy" using="hrCode,hRCode,URL"/>
   </entity>
 
 </domain-models>

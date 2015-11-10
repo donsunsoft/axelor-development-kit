@@ -1,4 +1,4 @@
-<div class="calendar-view webkit-scrollbar-all" ng-controller="CalendarViewCtrl">
+<div class="calendar-view" ng-controller="CalendarViewCtrl">
   <div class="navbar record-toolbar">
     <div class="navbar-inner">
       <div class="container">
@@ -12,7 +12,7 @@
         </div>
   	    <div ui-view-switcher class="pull-right"></div>
   	    <div class="record-pager pull-right">
-  	      <span ng-bind-html-unsafe="pagerText()"></span>
+  	      <span ng-bind-html="pagerText()"></span>
   	      <button class="btn" ng-click="onToday()"><span x-translate>Today</span></button>
   	      <div class="btn-group">
   	        <button class="btn" ng-disabled="!canPrev()" ng-click="onPrev()"><i class="fa fa-chevron-left"></i></button>

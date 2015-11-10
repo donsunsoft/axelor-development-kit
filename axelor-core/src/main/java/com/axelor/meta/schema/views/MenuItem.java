@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -29,6 +29,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 @XmlType
 public class MenuItem extends AbstractWidget {
 
+	@XmlAttribute(name = "id")
+	private String xmlId;
+
 	@XmlAttribute
 	private String name;
 
@@ -48,7 +51,7 @@ public class MenuItem extends AbstractWidget {
 	private String prompt;
 
 	@XmlAttribute
-	private Integer priority;
+	private Integer order;
 
 	@XmlAttribute
 	private String groups;
@@ -66,6 +69,9 @@ public class MenuItem extends AbstractWidget {
 	private String category;
 
 	@XmlAttribute
+	private Boolean hidden;
+
+	@XmlAttribute
 	private String showIf;
 
 	@XmlAttribute
@@ -73,6 +79,26 @@ public class MenuItem extends AbstractWidget {
 
 	@XmlAttribute
 	private String readonlyIf;
+
+	@XmlAttribute
+	private String tag;
+
+	@XmlAttribute(name = "tag-get")
+	private String tagGet;
+
+	@XmlAttribute(name = "tag-count")
+	private Boolean tagCount;
+
+	@XmlAttribute(name = "tag-style")
+	private String tagStyle;
+
+	public String getXmlId() {
+		return xmlId;
+	}
+
+	public void setXmlId(String xmlId) {
+		this.xmlId = xmlId;
+	}
 
 	public String getName() {
 		return name;
@@ -90,12 +116,12 @@ public class MenuItem extends AbstractWidget {
 		this.parent = parent;
 	}
 
-	public Integer getPriority() {
-		return priority;
+	public Integer getOrder() {
+		return order;
 	}
 
-	public void setPriority(Integer priority) {
-		this.priority = priority;
+	public void setOrder(Integer order) {
+		this.order = order;
 	}
 
 	public String getGroups() {
@@ -186,6 +212,14 @@ public class MenuItem extends AbstractWidget {
 		return Query.of(MetaMenu.class).filter("self.parent.name = ?1", name).cacheable().count() > 0;
 	}
 
+	public Boolean getHidden() {
+		return hidden;
+	}
+
+	public void setHidden(Boolean hidden) {
+		this.hidden = hidden;
+	}
+
 	public String getShowIf() {
 		return showIf;
 	}
@@ -208,5 +242,43 @@ public class MenuItem extends AbstractWidget {
 
 	public void setReadonlyIf(String readonlyIf) {
 		this.readonlyIf = readonlyIf;
+	}
+
+	@JsonIgnore
+	public String getTag() {
+		return tag;
+	}
+
+	@JsonGetter("tag")
+	public String getLocalizedTag() {
+		return I18n.get(tag);
+	}
+
+	public void setTag(String tag) {
+		this.tag = tag;
+	}
+
+	public String getTagGet() {
+		return tagGet;
+	}
+
+	public void setTagGet(String tagGet) {
+		this.tagGet = tagGet;
+	}
+
+	public Boolean getTagCount() {
+		return tagCount;
+	}
+
+	public void setTagCount(Boolean tagCount) {
+		this.tagCount = tagCount;
+	}
+
+	public String getTagStyle() {
+		return tagStyle;
+	}
+
+	public void setTagStyle(String tagStyle) {
+		this.tagStyle = tagStyle;
 	}
 }

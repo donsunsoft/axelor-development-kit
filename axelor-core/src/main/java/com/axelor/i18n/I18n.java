@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -35,16 +35,26 @@ public final class I18n {
 	}
 
 	/**
-	 * Get the instance of {@link I18nBundle} for the current {@link Locale}.
+	 * Get a resource bundle for the given locale.
 	 * 
+	 * @param locale
+	 *            the locale for which a resource bundle is desired
 	 * @return an instance of {@link I18nBundle}
 	 */
-	public static ResourceBundle getBundle() {
-		Locale locale = AppFilter.getLocale();
+	public static ResourceBundle getBundle(Locale locale) {
 		if (locale == null) {
 			locale = Locale.getDefault();
 		}
 		return ResourceBundle.getBundle("axelor", locale, new I18nControl());
+	}
+
+	/**
+	 * Get the resource bundle for the current {@link Locale}.
+	 * 
+	 * @return an instance of {@link I18nBundle}
+	 */
+	public static ResourceBundle getBundle() {
+		return getBundle(AppFilter.getLocale());
 	}
 
 	/**

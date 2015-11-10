@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -175,7 +175,7 @@ public class JobRunner {
 	public void stop() {
 		log.info("Stoping scheduler...");
 		try {
-			scheduler.shutdown();
+			scheduler.shutdown(true);
 		} catch (SchedulerException e) {
 			log.error("Unable to stop the scheduler...");
 			log.trace("Scheduler error: {}", e.getMessage(), e);

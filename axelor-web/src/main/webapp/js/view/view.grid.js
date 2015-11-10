@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,10 +15,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-GridViewCtrl.$inject = ['$scope', '$element'];
+(function() {
+
+/* global Slick: true */
+
+"use strict";
+
+var ui = angular.module('axelor.ui');
+
+ui.controller('GridViewCtrl', GridViewCtrl);
+
+ui.GridViewCtrl = GridViewCtrl;
+ui.GridViewCtrl.$inject = ['$scope', '$element'];
+
 function GridViewCtrl($scope, $element) {
 
-	DSViewCtrl('grid', $scope, $element);
+	ui.DSViewCtrl('grid', $scope, $element);
 
 	var ds = $scope._dataSource;
 	var page = {};
@@ -194,6 +206,10 @@ function GridViewCtrl($scope, $element) {
 		return $scope.hasPermission('massUpdate', false);
 	};
 
+	$scope.canExport = function() {
+		return $scope.hasPermission('export');
+	};
+
 	$scope.filter = function(searchFilter) {
 
 		var fields = _.pluck($scope.fields, 'name'),
@@ -215,7 +231,7 @@ function GridViewCtrl($scope, $element) {
 			sortBy, pageNum,
 			domain = null,
 			context = null,
-			action = undefined,
+			action = null,
 			criteria = {
 				operator: 'and'
 			};
@@ -242,7 +258,7 @@ function GridViewCtrl($scope, $element) {
 			var field = $scope.fields[key] || {};
 			var type = field.type || 'string';
 			var operator = 'like';
-			var value2 = undefined;
+			var value2;
 
 			//TODO: implement expression parser
 			
@@ -349,7 +365,7 @@ function GridViewCtrl($scope, $element) {
 
 	$scope.pagerText = function() {
 		if (page && page.from !== undefined) {
-			if (page.total == 0) return null;
+			if (page.total === 0) return null;
 			return _t("{0} to {1} of {2}", page.from + 1, page.to, page.total);
 		}
 	};
@@ -398,9 +414,11 @@ function GridViewCtrl($scope, $element) {
 		});
 	};
 
+	$scope.$confirmMessage = _t("Do you really want to delete the selected record(s)?");
+
 	$scope.onDelete = function() {
 		
-		axelor.dialogs.confirm(_t("Do you really want to delete the selected record(s)?"), function(confirmed){
+		axelor.dialogs.confirm($scope.$confirmMessage, function(confirmed){
 
 			if (!confirmed)
 				return;
@@ -410,7 +428,7 @@ function GridViewCtrl($scope, $element) {
 			});
 
 			ds.removeAll(selected).success(function(records, page){
-				if (records.length == 0 && page.total > 0) {
+				if (records.length === 0 && page.total > 0) {
 					$scope.onRefresh();
 				}
 			});
@@ -484,11 +502,11 @@ function GridViewCtrl($scope, $element) {
 		}
 
 		var dataView = $scope.dataView,
-			selected = _.map($scope.selection, function(index) {
+			selected = _.map($scope.selection || [], function(index) {
 				return dataView.getItem(index);
 			});
 		return {
-			'_ids': _.pluck(selected, "id")
+			'_ids': _.pluck(selected || [], "id")
 		};
 	};
 	
@@ -508,6 +526,15 @@ function GridViewCtrl($scope, $element) {
 		});
 	};
 	
+	$scope.onExport = function (full) {
+		var fields = full ? [] : _.pluck($scope.view.items, 'name');
+		return ds.export_(fields).success(function(res) {
+			var fileName = res.fileName;
+			var filePath = 'ws/rest/' + $scope._model + '/export/' + fileName;
+			ui.download(filePath, fileName);
+		});
+	};
+
 	function focusFirst() {
 		var index = _.first($scope.selection) || 0;
 		var first = $scope.dataView.getItem(index);
@@ -558,65 +585,14 @@ function GridViewCtrl($scope, $element) {
 	};
 }
 
-angular.module('axelor.ui').directive('uiViewGrid', function(){
+ui.directive('uiViewGrid', function(){
 	return {
 		replace: true,
 		template: '<div ui-slick-grid ui-widget-states></div>'
 	};
 });
 
-angular.module('axelor.ui').directive('uiGridExport', function(){
-
-	return {
-		require: '^uiFilterBox',
-		link: function(scope, element, attrs, ctrl) {
-			var handler = ctrl.$scope.handler;
-			if (!handler) {
-				return;
-			}
-	
-			function action(name) {
-				var res = 'ws/rest/' + handler._model + '/export';
-				return name ? res + '/' + name : res;
-			}
-	
-			function fields() {
-				return _.pluck(handler.view.items, 'name');
-			}
-	
-			var ds = handler._dataSource;
-			
-			function onExport() {
-				return ds.export_(fields()).success(function(res) {
-	
-					var filePath = action(res.fileName),
-						fileName = res.fileName;
-	
-					var link = document.createElement('a');
-	
-					link.onclick = function(e) {
-						document.body.removeChild(e.target);
-					};
-	
-					link.href = filePath;
-					link.download = fileName;
-					link.innerHTML = fileName;
-					link.style.display = "none";
-	
-					document.body.appendChild(link);
-	
-					link.click();
-					
-					axelor.notify.info(_t("Export in progress ..."));
-				});
-			};
-			
-			element.on('click', onExport);
-		}
-	};
-});
-
-angular.module('axelor.ui').directive('uiPortletGrid', function(){
+ui.directive('uiPortletGrid', function(){
 	return {
 		controller: ['$scope', '$element', 'ViewService', 'NavService', 'MenuService',
 		             function($scope, $element, ViewService, NavService, MenuService) {
@@ -632,8 +608,7 @@ angular.module('axelor.ui').directive('uiPortletGrid', function(){
 
 				promise.success(function (result) {
 					if (!result.data) return;
-					view = result.data[0].view;
-
+					var view = result.data[0].view;
 					return doOpen(force, view);
 				});
 			}
@@ -751,3 +726,5 @@ angular.module('axelor.ui').directive('uiPortletGrid', function(){
 		'</div>'
 	};
 });
+
+})();

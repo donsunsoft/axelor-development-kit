@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.axelor.meta.ActionHandler;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Strings;
 
 @XmlType(name = "AbstractAction")
@@ -34,6 +34,9 @@ public abstract class Action {
 	
 	protected final transient Logger log = LoggerFactory.getLogger(getClass());
 	
+	@XmlAttribute(name = "id")
+	private String xmlId;
+
 	@XmlAttribute
 	private String name;
 	
@@ -42,6 +45,14 @@ public abstract class Action {
 	
 	@XmlAttribute(name = "if-module")
 	private String moduleToCheck;
+
+	public String getXmlId() {
+		return xmlId;
+	}
+
+	public void setXmlId(String xmlId) {
+		this.xmlId = xmlId;
+	}
 
 	public String getName() {
 		return name;
@@ -73,7 +84,7 @@ public abstract class Action {
 	
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(getClass()).add("name", getName()).toString();
+		return MoreObjects.toStringHelper(getClass()).add("name", getName()).toString();
 	}
 	
 	static boolean test(ActionHandler handler, String expression) {
@@ -83,7 +94,7 @@ public abstract class Action {
 			return true;
 		if (expression.equals("false"))
 			return false;
-		Pattern pattern = Pattern.compile("^(eval|select|action):");
+		Pattern pattern = Pattern.compile("^(#\\{|(eval|select|action):)");
 		if (expression != null && !pattern.matcher(expression).find()) {
 			expression = "eval:" + expression;
 		}

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function($, undefined){
+(function() {
+
+	"use strict";
 
 	var BSTabs = function(element) {
 		this.element = $(element);
@@ -49,17 +51,23 @@
 		    	return false;
 		    });
 		    
-		    this.element.on('adjustSize', function(event){
+		    $(window).on('resize', _.debounce(function() {
 		    	self._adjustScroll();
+		    }, 300));
+
+		    this.element.on('adjustSize', function(event){
+	    		self._adjustScroll();
 		    });
 		     
 		    this.element.on('adjust', function(event){
 		    	event.stopPropagation();
-		    	var tab = self.$elemTabs.find('> li.active');
-				if (tab) {
-					self._adjustTab(tab, true);
-				}
-				self._adjustScroll();
+		    	setTimeout(function (){
+		    		self._adjustScroll();
+		    	});
+		    });
+
+		    this.$elemTabs.on("click", " > li > a", function(event){
+		    	self._adjustTab($(this).parent(), true);
 		    });
 		},
 		
@@ -96,6 +104,12 @@
 		},
 		
 		_scrollTabs: function(scrollTo, animate) {
+			if (scrollTo === this._lastScrollTo) {
+				return;
+			}
+
+			this._lastScrollTo = scrollTo;
+
 			if (animate) {
 				var self = this;
 				return this.$elemTabs.animate({
@@ -116,7 +130,7 @@
 				this.$elemLeftScroller.addClass('disabled');
 			}
 			
-			if (this._getTabsWidth() + this.$elemTabs.position().left > this.$elemStrip.width()) {
+			if (this._getTabsWidth() + this.$elemTabs.position().left > this.$elemStrip.width() + 1) {
 				this.$elemRightScroller.removeClass('disabled');
 			} else {
 				this.$elemRightScroller.addClass('disabled');
@@ -131,7 +145,7 @@
             var scrollTo = this.$elemTabs.position().left;
             
             var left = $(tab).position().left + scrollTo;
-            var right = left + $(tab).width();
+            var right = left + $(tab).outerWidth(true);
 
             if (left < 0) {
                 scrollTo -= left;
@@ -146,30 +160,35 @@
 		
 			var widthStrip = this.$elemStrip.width();
 			var widthTabs = this._getTabsWidth();
-			
+
+			this.element.toggleClass("nav-tabs-overflow", widthStrip < widthTabs);
+
+			var scrollTo = 0;
+
 			if (widthStrip >= widthTabs) {
 				this.$elemLeftScroller.hide();
 				this.$elemRightScroller.hide();
 				this.$elemMenu.hide();
 				this.$elemStrip.css('margin', '0');
-				this.$elemTabs.css('left', 0);
 			} else {
 				this.$elemLeftScroller.show();
 				this.$elemRightScroller.show();
 				this.$elemMenu.show();
 				this.$elemStrip.css('margin', this.$elemMenu.length ? '0 32px 0 16px' : '0 16px');
+
 				var left = this.$elemTabs.position().left;
 				var right = widthTabs + left;
-				
 				if (right < widthStrip) {
-				    this.$elemTabs.css('left', left + (widthStrip - right));
-				} else {				
+					scrollTo = left + (widthStrip - right);
+				} else {
 					var tab = this.$elemTabs.find('> li.active');
 					if (tab) {
-						this._adjustTab(tab);
+						return this._adjustTab(tab);
 					}
 				}
 			}
+
+			this._scrollTabs(scrollTo);
 		}
 	};
 	
@@ -183,6 +202,4 @@
 
 	$.fn.bsTabs.Constructor = BSTabs;
 	
-}(jQuery));
-
-
+})();

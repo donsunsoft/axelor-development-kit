@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,16 +17,12 @@
  */
 package com.axelor.gradle
 
-import java.util.regex.Pattern
-
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.JavaExec
 import org.gradle.internal.os.OperatingSystem
 
-import com.axelor.common.VersionUtils
 import com.axelor.gradle.tasks.GenerateCode
 import com.axelor.gradle.tasks.VersionTask
 
@@ -37,7 +33,7 @@ class AppPlugin extends AbstractPlugin {
 		project.configure(project) {
 
 			apply plugin: 'war'
-			apply plugin: 'tomcat'
+			apply plugin: 'com.bmuschko.tomcat'
 
             def definition = extensions.create("application", AppDefinition)
 
@@ -55,25 +51,24 @@ class AppPlugin extends AbstractPlugin {
 				compile		"com.axelor:axelor-web:${sdkVersion}"
 				
 				providedCompile	libs.javax_servlet
+				providedCompile	libs.javax_servlet_jsp
 
-				def tomcatVersion = '7.0.54'
+				def tomcatVersion = '7.0.64'
 				tomcat "org.apache.tomcat.embed:tomcat-embed-core:${tomcatVersion}",
-					   "org.apache.tomcat.embed:tomcat-embed-logging-juli:${tomcatVersion}"
-				tomcat("org.apache.tomcat.embed:tomcat-embed-jasper:${tomcatVersion}") {
-					exclude group: 'org.eclipse.jdt.core.compiler', module: 'ecj'
-				}
+					   "org.apache.tomcat.embed:tomcat-embed-logging-juli:${tomcatVersion}",
+					   "org.apache.tomcat.embed:tomcat-embed-jasper:${tomcatVersion}"
 			}
 
 			allprojects {
 				configurations {
 					axelorCore
 					axelorCore.transitive = false
+					compile.exclude group: 'c3p0', module: 'c3p0'
 				}
 				dependencies {
 					axelorCore "com.axelor:axelor-common:${sdkVersion}"
 					axelorCore "com.axelor:axelor-core:${sdkVersion}"
 					axelorCore "com.axelor:axelor-web:${sdkVersion}"
-					axelorCore "com.axelor:axelor-wkf:${sdkVersion}"
 					axelorCore "com.axelor:axelor-test:${sdkVersion}"
 				}
 			}
@@ -85,15 +80,6 @@ class AppPlugin extends AbstractPlugin {
 					try {
 						project.tasks.generateCode.dependsOn p.generateCode
 					} catch (Exception e) {}
-				}
-
-				if (project.hasProperty('linkCoreInEclipse')) {
-					linkCoreProjects(project)
-					project.subprojects { sub ->
-						if (sub.plugins.hasPlugin('axelor-module')) {
-							linkCoreProjects(sub)
-						}
-					}
 				}
             }
 
@@ -127,12 +113,12 @@ class AppPlugin extends AbstractPlugin {
 				commandLine = ["npm", "install"]
 			}
 
-			task("grunt", type: Exec, dependsOn: 'npm') {
-				description "Run grunt command to build web resources."
+			task("gulp", type: Exec, dependsOn: 'npm') {
+				description "Run gulp command to build web resource bundles."
 				group "Axelor web"
-				def command = "grunt"
+				def command = "gulp"
 				if (OperatingSystem.current().isWindows()) {
-					command = "grunt.cmd"
+					command = "gulp.cmd"
 				}
 				workingDir "${buildDir}/webapp"
 				commandLine = [command]
@@ -141,10 +127,20 @@ class AppPlugin extends AbstractPlugin {
 			task("init", dependsOn: "classes", type: JavaExec) {
 				description "Initialize application database."
 				group "Axelor web"
-				main = "com.axelor.app.internal.AppInitCli"
+				main = "com.axelor.app.internal.AppCli"
 				classpath = sourceSets.main.runtimeClasspath
 				if (project.properties.update) args "-u" else args "-i"
 				if (project.properties.modules) args "-m " + project.properties.modules
+				jvmArgs "-Daxelor.config=" + System.getProperty('axelor.config')
+			}
+
+			task("migrate", dependsOn: "classes", type: JavaExec) {
+				description "Run database migration scripts."
+				group "Axelor"
+				main = "com.axelor.app.internal.AppCli"
+				classpath = sourceSets.main.runtimeClasspath
+				args "-M"
+				if (project.properties.verbose) args "--verbose"
 				jvmArgs "-Daxelor.config=" + System.getProperty('axelor.config')
 			}
 
@@ -152,96 +148,11 @@ class AppPlugin extends AbstractPlugin {
 
 			war.dependsOn "copyWebapp"
 			war.from "${buildDir}/webapp"
-			war.exclude "node_modules", "Gruntfile.js", "package.json"
+			war.exclude "node_modules", "gulpfile.js", "package.json"
 			war.duplicatesStrategy = "EXCLUDE"
 
 			tomcatRun.dependsOn "copyWebapp"
 			tomcatRun.webAppSourceDirectory = file("${buildDir}/webapp")
-
-			// add eclipse launcher
-			eclipseLaunchers(project)
         }
     }
-
-	private Pattern namePattern = ~/^(axelor-(?:common|core|web|wkf))-/
-
-	private List<String> findCoreModules(Project project) {
-		def all = []
-		project.configurations.runtime.each { File lib ->
-			def m = namePattern.matcher(lib.name)
-			if (m.find()) {
-				all += [m.group(1)]
-			}
-		}
-		return all
-	}
-
-	private void linkCoreProjects(Project project) {
-
-		def linked = findCoreModules(project)
-		def wtpLinked = linked - ['axelor-test']
-
-		project.eclipse.classpath {
-			minusConfigurations += [project.configurations.axelorCore]
-		}
-		project.eclipse.classpath.file {
-			withXml {
-				def node = it.asNode()
-				def ref = node.find { it.@path == "org.eclipse.jst.j2ee.internal.web.container" }
-				if (ref) {
-					ref.plus {
-						linked.collect { name -> classpathentry(kind: 'src', path: "/${name}", exported: 'true')}
-					}
-				} else {
-					linked.each { name -> node.appendNode('classpathentry', [kind: 'src', path: "/${name}", exported: 'true']) }
-				}
-			}
-		}
-
-		if (!project.plugins.hasPlugin("war")) {
-			return
-		}
-
-		project.eclipse.wtp.component {
-			minusConfigurations += [project.configurations.axelorCore]
-		}
-		project.eclipse.wtp.component.file {
-			withXml {
-				def node = it.asNode()['wb-module'][0]
-				node.find { it.'@source-path' == "src/main/webapp" }?.replaceNode {
-					['wb-resource'('deploy-path': "/", 'source-path': "axelor-webapp"),
-					 'wb-resource'('deploy-path': "/", 'source-path': "src/main/webapp")] +
-					wtpLinked.collect { name ->
-						'dependent-module'('deploy-path': "/WEB-INF/lib", handle: "module:/resource/${name}/${name}") {
-							'dependency-type'('uses')
-						}
-					}
-				}
-			}
-		}
-		project.eclipse.project {
-			linkedResource name: 'axelor-webapp', type: '2', location: '${WORKSPACE_LOC}/axelor-development-kit/axelor-web/src/main/webapp'
-		}
-	}
-
-	private void eclipseLaunchers(Project project) {
-		project.tasks.eclipse.doLast {
-			def home = System.getenv("AXELOR_HOME")
-			def launcher = project.file(".settings/Generate Code (${project.name}).launch")
-			launcher.text = """<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<launchConfiguration type="org.eclipse.ui.externaltools.ProgramLaunchConfigurationType">
-<stringAttribute key="org.eclipse.debug.core.ATTR_REFRESH_SCOPE" value="\${workspace}"/>
-<mapAttribute key="org.eclipse.debug.core.environmentVariables">
-<mapEntry key="AXELOR_HOME" value="${home}"/>
-</mapAttribute>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_LAUNCH_CONFIGURATION_BUILD_SCOPE" value="\${none}"/>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_LOCATION" value="${project.projectDir}/gradlew"/>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_RUN_BUILD_KINDS" value="full,"/>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_TOOL_ARGUMENTS" value="generateCode"/>
-<booleanAttribute key="org.eclipse.ui.externaltools.ATTR_TRIGGERS_CONFIGURED" value="true"/>
-<stringAttribute key="org.eclipse.ui.externaltools.ATTR_WORKING_DIRECTORY" value="${project.projectDir}"/>
-</launchConfiguration>
-"""
-		}
-	}
 }

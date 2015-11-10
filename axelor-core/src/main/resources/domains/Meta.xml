@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <domain-models xmlns="http://axelor.com/xml/ns/domain-models"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://axelor.com/xml/ns/domain-models http://axelor.com/xml/ns/domain-models/domain-models_3.0.xsd">
+  xsi:schemaLocation="http://axelor.com/xml/ns/domain-models http://axelor.com/xml/ns/domain-models/domain-models_4.0.xsd">
 
   <module name="meta" package="com.axelor.meta.db" />
   
@@ -47,25 +47,47 @@
     <finder-method name="findByModule" using="name,module" cacheable="true"/>
     <finder-method name="findByModule" using="module" all="true" cacheable="true"/>
   </entity>
-  
+
+  <entity name="MetaViewCustom" table="META_VIEW_CUSTOM" cachable="true">
+    <string name="name" required="true" />
+    <string name="title" required="true" namecolumn="true" />
+    <string name="type" required="true" selection="view.type.selection"/>
+    <string name="model" />
+    <string name="xml" required="true" large="true"/>
+    <many-to-one name="user" ref="com.axelor.auth.db.User" column="user_id" required="true" />
+
+    <finder-method name="findByUser" using="name,user" cacheable="true"/>
+    <finder-method name="findByUser" using="name,model,user" cacheable="true"/>
+
+  </entity>
+
   <entity name="MetaMenu" table="META_MENU" cachable="true">
     <![CDATA[
     This object store the menus.
     ]]>
     
-  	<integer name="priority"/>
-  	<string name="name" unique="true" required="true"/>
+	<integer name="priority" />
+    <integer name="order" column="order_seq" />
+    <string name="xmlId" unique="true" />
+	<string name="name" required="true"/>
   	<string name="title" required="true" namecolumn="true"/>
   	<string name="icon"/>
     <string name="module"/>
+    <string name="tag" />
+    <string name="tagGet" />
+    <boolean name="tagCount" />
+    <string name="tagStyle" selection="label.style.selection" />
     <boolean name="top" column="top_menu"/>
     <boolean name="left" column="left_menu" default="true"/>
     <boolean name="mobile" column="mobile_menu"/>
+    <boolean name="hidden" />
   	<many-to-one name="parent" ref="MetaMenu"/>
   	<many-to-one name="action" ref="MetaAction"/>
+    <many-to-one name="user" column="user_id" ref="com.axelor.auth.db.User" />
   	<many-to-many name="groups" ref="com.axelor.auth.db.Group"/>
     
-    <finder-method name="findByName" using="name" orderBy="-priority" cacheable="true"/>
+    <finder-method name="findByID" using="xmlId" cacheable="true" />
+    <finder-method name="findByName" using="name" orderBy="-order" cacheable="true"/>
     <finder-method name="findByParent" using="Long:id" filter="self.parent.id = :id" all="true" cacheable="true"/>
     <finder-method name="findByModule" using="module" all="true" cacheable="true"/>
   </entity>
@@ -75,13 +97,19 @@
     This object store the actions menu.
     ]]>
     
-  	<string name="name" unique="true" required="true"/>
+    <integer name="priority" />
+    <integer name="order" column="order_seq" />
+    <string name="xmlId" unique="true" />
+	<string name="name" required="true"/>
   	<string name="title" required="true" namecolumn="true"/>
     <string name="category" help="Category name to group action menus."/>
     <string name="module"/>
+    <boolean name="hidden" />
   	<many-to-one name="parent" ref="MetaActionMenu"/>
   	<many-to-one name="action" ref="MetaAction"/>
     
+    <finder-method name="findByID" using="xmlId" cacheable="true" />
+    <finder-method name="findByName" using="name" orderBy="-order" cacheable="true"/>
     <finder-method name="findByModule" using="module" all="true" cacheable="true"/>
   </entity>
    
@@ -90,12 +118,17 @@
     This object store the xml actions.
     ]]>
     
-  	<string name="name" unique="true" required="true"/>
+    <integer name="priority" />
+    <string name="xmlId" unique="true" />
+	<string name="name" required="true"/>
     <string name="type" required="true" selection="action.type.selection"/>
+    <boolean name="home" title="Used as home action" help="Specify whether this action can be used as home action."/>
     <string name="model" />
     <string name="module" />
   	<string name="xml" required="true" large="true"/>
     
+    <finder-method name="findByID" using="xmlId" cacheable="true" />
+    <finder-method name="findByName" using="name" orderBy="-priority" cacheable="true" />
     <finder-method name="findByModule" using="module" all="true" cacheable="true"/>
   </entity>
   
@@ -121,8 +154,10 @@
     
     <string name="title" required="true" namecolumn="true" help="The select item title." />
     <string name="value" required="true" help="The select item value." />
+    <string name="icon" help="The image icon to show in UI widgets." />
     <string name="data" help="The addition data for UI widgets." />
     <integer name="order" column="order_seq"/>
+    <boolean name="hidden" />
     <many-to-one name="select" ref="MetaSelect" column="select_id" required="true"/>
   </entity>
   
@@ -154,10 +189,10 @@
   </entity>
   
   <entity name="MetaTranslation" table="META_TRANSLATION" logUpdates="false">
-    <string name="key" required="true" large="true" />
-    <string name="message" large="true" />
+    <string name="key" column="message_key" required="true" large="true" />
+    <string name="message" column="message_value" large="true" />
     <string name="language" required="true" />
-    <unique-constraint columns="key,language"/>
+    <unique-constraint columns="message_key,language"/>
     <finder-method name="findByKey" using="key,language" cacheable="true" />
   </entity>
 
@@ -167,18 +202,16 @@
     ]]>
   	<string name="fileName" required="true" namecolumn="true"/>
     <string name="filePath" required="true"/>
-  	<long name="size" title="Size in bytes" readonly="true"/>
-  	<string name="mime" title="File type"/>
+  	<long name="fileSize" title="Size in bytes" readonly="true"/>
+  	<string name="fileType" title="File type"/>
   	<string name="description" multiline="true"/>
-  	<string name="sizeText" title="Size" readonly="true">
+  	<string name="sizeText" column="file_size_text" title="Size" readonly="true">
       <![CDATA[
-      	if(size >= 1024)
-      		return (size / 1024) + " KB";
-      	else if(size > 1048576)
-      		return (size / 1048576) + " MB";
-      	else if(size > 1073741824)
-      		return (size / 1073741824) + " GB";
-      	return size + " Bytes";
+      if (fileSize == null) return null;
+      if(fileSize > 1000000000) return String.format("%.2f GB", fileSize / 1000000000.00);
+      if(fileSize > 1000000) return String.format("%.2f MB", fileSize / 1000000.00);
+      if(fileSize >= 1000) return String.format("%.2f KB", fileSize / 1000.00);
+      return fileSize + " B";
       ]]>
   	</string>
   </entity>

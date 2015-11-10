@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -54,6 +54,10 @@ public abstract class AbstractPanel extends AbstractContainer {
 
 	public Boolean getSidebar() {
 		return sidebar;
+	}
+
+	public void setSidebar(Boolean sidebar){
+		this.sidebar = sidebar;
 	}
 
 	public Boolean getStacked() {

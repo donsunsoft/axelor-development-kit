@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -32,7 +32,6 @@ public class TestResolver {
 	public void test() {
 		
 		resolver.add("axelor-auth", 	"axelor-core");
-		resolver.add("axelor-wkf", 		"axelor-auth", "axelor-core");
 		resolver.add("axelor-meta", 	"axelor-data");
 		
 		resolver.add("axelor-x");

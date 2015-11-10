@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -263,6 +263,7 @@ public class AuthService {
 			values.put("email", user.getEmail());
 			values.put("language", user.getLanguage());
 			values.put("homeAction", user.getHomeAction());
+			values.put("singleTab", user.getSingleTab());
 		}
 
 		if (action != null) {

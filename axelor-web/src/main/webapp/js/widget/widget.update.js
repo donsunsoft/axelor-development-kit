@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -55,8 +55,8 @@ ui.directive('uiUpdateButton', ['$compile', function ($compile) {
 			};
 			
 			scope.canMassUpdate = function () {
-				true;
-			}
+				return true;
+			};
 			
 			if (scope.handler && scope.handler.canMassUpdate) {
 				scope.canMassUpdate = scope.handler.canMassUpdate;
@@ -126,8 +126,8 @@ ui.directive('uiUpdateDummy', function () {
 				views: []
 			};
 
-			ViewCtrl($scope, DataSource, ViewService);
-			FormViewCtrl.call(this, $scope, $element);
+			ui.ViewCtrl($scope, DataSource, ViewService);
+			ui.FormViewCtrl.call(this, $scope, $element);
 
 			function prepare(fields) {
 				
@@ -309,7 +309,7 @@ ui.directive('uiUpdateForm',  function () {
 				if ($scope.updateAll) {
 					count = ds._page.total;
 				} else if(handler.selection && handler.selection.length > 0) {
-					count = handler.selection.length
+					count = handler.selection.length;
 				} else {
 					return;
 				}
@@ -438,4 +438,4 @@ ui.directive('uiUpdateMenu', function () {
 	};
 });
 
-}());
+})();

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -32,11 +32,19 @@ class Entity {
 
 	String namespace
 	
+	String repoNamespace
+
+	String tablePrefix
+
 	transient long lastModified
+
+	private String interfaces
 
 	String baseClass
 
 	String strategy
+
+	boolean mappedSuper
 
 	boolean sequential
 
@@ -62,6 +70,8 @@ class Entity {
 
 	Map<String, Property> propertyMap
 
+	Property nameField
+
 	private Repository repository
 
 	private ImportManager importManager
@@ -70,18 +80,23 @@ class Entity {
 	
 	private String extraCode
 
+	private Track track
+
 	Entity baseEntity
 
 	Entity(NodeChild node) {
 		name = node.@name
 		table = node.@table
-		namespace = node.parent().module."@package"
 		module = node.parent().module.'@name'
-
+		namespace = node.parent().module."@package"
+		repoNamespace = node.parent().module."@repo-package"
+		tablePrefix = node.parent().module."@table-prefix"
+		mappedSuper = node.'@persistable' == 'false'
 		sequential = !(node.'@sequential' == "false")
 		groovy = node.'@lang' == "groovy"
 		hashAll = node.'@hashAll' == "true"
 		cachable = node.'@cachable'
+		interfaces = node.'@implements'
 		baseClass = node.'@extends'
 		strategy = node.'@strategy'
 		documentation = findDocs(node)
@@ -89,37 +104,47 @@ class Entity {
 		if (!name) {
 			throw new IllegalArgumentException("Entity name not given.")
 		}
-		
-		if (!namespace) {
-			namespace = "com.axelor.${module}.db"
+
+		if (!module || !namespace) {
+			throw new IllegalArgumentException("Namespace details not given or incomplete.")
+		}
+
+		if (!repoNamespace) {
+			repoNamespace = "${namespace}.repo"
+		}
+
+		if (!tablePrefix) {
+			if (namespace.endsWith(".db")) {
+				tablePrefix = namespace.replaceAll(/\.db$/, "")
+				tablePrefix = tablePrefix.substring(tablePrefix.lastIndexOf('.') + 1) + "_"
+			} else {
+				tablePrefix = module + "_"
+			}
+		} else if (!tablePrefix.endsWith("_")) {
+			tablePrefix += "_"
 		}
 
 		if (!table) {
-			table = namespace.replaceAll(/\.db$/, "")
-			table = table.substring(table.lastIndexOf('.') + 1)
-			table = Inflector.getInstance().underscore(table + '_' + name).toUpperCase()
+			table = Inflector.getInstance().underscore(tablePrefix + name).toUpperCase()
 		}
 
 		importManager = new ImportManager(namespace, groovy)
 
-		if (node.@repository != "none") {
+		if (node.@repository != "none" && !mappedSuper) {
 			repository = new Repository(this)
 			repository.concrete = node.@repository != "abstract"
 		}
 		
-		if (!this.pojo) {
-			importType("javax.persistence.EntityManager")
-			importType("com.axelor.db.Model")
-			importType("com.axelor.db.JPA")
-			importType("com.axelor.db.Query")
-		}
-
 		properties = []
 		propertyMap = [:]
 		constraints = []
 		indexes = []
 		finders = []
 		extraCode = null
+
+		if (interfaces) {
+			interfaces = interfaces.split(",").collect { importType(it.trim()) }.join(", ")
+		}
 
 		if (!baseClass) {
 			if (node.@logUpdates != "false") {
@@ -130,11 +155,8 @@ class Entity {
 			propertyMap.put("id", Property.idProperty(this));
 			properties.add(propertyMap.get("id"));
 		} else {
-			if (!strategy || strategy == 'SINGLE') {
-				table = null
-			}
 			hasExtends = true
-			importType("com.axelor.db.internal.EntityHelper")
+			importType("com.axelor.db.EntityHelper")
 		}
 
 		node."*".each {
@@ -154,12 +176,18 @@ class Entity {
 			case "extra-code":
 				extraCode = it.text()
 				break
+			case "track":
+				track = new Track(this, it)
+				break
 			default:
 				Property field = new Property(this, it)
 				properties += field
 				propertyMap[field.name] = field
 				if (field.isVirtual() && !field.isTransient()) {
 					dynamicUpdate = true
+				}
+				if (field.isNameField()) {
+					nameField = field
 				}
 			}
 		}
@@ -169,18 +197,21 @@ class Entity {
 		return this.repository
 	}
 
-	boolean isPojo() {
-		return System.getProperty("codegen.pojo", "true") == "true"
-	}
-
 	void merge(Entity other) {
 		
 		for (Property prop : other.properties) {
-			if (!propertyMap.containsKey(prop.name)) {
+			Property existing = propertyMap.get(prop.name)
+			if (existing == null || (existing.virtual && existing.type == prop.type && existing.target == prop.target)) {
 				prop.ownEntity = prop.entity
 				prop.entity = this
+				if (existing != null) {
+					properties.remove(existing)
+				}
 				properties.add(prop)
-				propertyMap[prop.name] = prop;
+				propertyMap[prop.name] = prop
+				if (prop.isNameField()) {
+					nameField = prop
+				}
 			}
 		}
 		
@@ -215,6 +246,11 @@ class Entity {
 
 	String getBaseClass() {
 		return importType(baseClass)
+	}
+
+	String getImplementStmt() {
+		if (!interfaces || interfaces.trim() == "") return ""
+		return " implements " + interfaces
 	}
 
 	String findDocs(parent) {
@@ -292,7 +328,7 @@ class Entity {
 		def hashables = getHashables()
 		def code = ["if (obj == null) return false;"]
 
-		importType("com.google.common.base.Objects")
+		importType("java.util.Objects")
 
 		if (groovy) {
 			code += "if (this.is(obj)) return true;"
@@ -301,13 +337,13 @@ class Entity {
 		}
 		code += "if (!(obj instanceof ${name})) return false;"
 		code += ""
-		code += "${name} other = (${name}) obj;"
+		code += "final ${name} other = (${name}) obj;"
 		code += "if (this.getId() != null || other.getId() != null) {"
-		code += "\treturn Objects.equal(this.getId(), other.getId());"
+		code += "\treturn Objects.equals(this.getId(), other.getId());"
 		code += "}"
 		if (!hashables.empty) {
 			code += ""
-			code += getHashables().collect { p -> "if (!Objects.equal(${p.getter}(), other.${p.getter}())) return false;"}
+			code += getHashables().collect { p -> "if (!Objects.equals(${p.getter}(), other.${p.getter}())) return false;"}
 		}
 		code += ""
 		code += hashables.empty ? "return false;" : "return true;"
@@ -318,11 +354,11 @@ class Entity {
 		if (hasExtends) {
 			return "return EntityHelper.hashCode(this);"
 		}
-		importType("com.google.common.base.Objects")
+		importType("java.util.Objects")
 		def data = getHashables()collect { "this.${it.getter}()" }.join(", ")
 		if (data.size()) {
 			def hash = name.hashCode()
-			return "return Objects.hashCode(${hash}, ${data});"
+			return "return Objects.hash(${hash}, ${data});"
 		}
 		return "return super.hashCode();"
 	}
@@ -331,11 +367,12 @@ class Entity {
 		if (hasExtends) {
 			return "return EntityHelper.toString(this);"
 		}
-		importType("com.google.common.base.Objects.ToStringHelper")
+
+		importType("com.google.common.base.MoreObjects")
 
 		def code = []
 
-		code += "ToStringHelper tsh = Objects.toStringHelper(this);\n"
+		code += "final MoreObjects.ToStringHelper tsh = MoreObjects.toStringHelper(this);\n"
 		code += "tsh.add(\"id\", this.getId());"
 		int count = 0
 		for(Property p : properties) {
@@ -360,15 +397,21 @@ class Entity {
 
 	List<Annotation> getAnnotations() {
 
-		def all = [new Annotation(this, "javax.persistence.Entity", true), $cachable()]
+		def all = []
 
-		if (dynamicUpdate) {
+		if (!mappedSuper) {
+			all += [new Annotation(this, "javax.persistence.Entity", true), $cachable()]
+		}
+
+		if (!mappedSuper && dynamicUpdate) {
 			all += new Annotation(this, "org.hibernate.annotations.DynamicInsert", true)
 			all += new Annotation(this, "org.hibernate.annotations.DynamicUpdate", true)
 		}
 
 		all += $table()
 		all += $strategy()
+		all += $track()
+		all += $mappedSuperClass()
 
 		return all.grep { it != null }.flatten()
 				  .grep { Annotation a -> !a.empty }
@@ -392,7 +435,7 @@ class Entity {
 
 	List<Annotation> $table() {
 
-		if (!table) return []
+		if (!table || mappedSuper) return []
 
 		def constraints = this.constraints.collect {
 			def idx = new Annotation(this, "javax.persistence.UniqueConstraint", false)
@@ -433,14 +476,26 @@ class Entity {
 		return null
 	}
 
+	Annotation $mappedSuperClass() {
+		if (mappedSuper) {
+			return new Annotation(this, "javax.persistence.MappedSuperclass", true)
+		}
+	}
+
 	Annotation $strategy() {
-		if (!strategy) return null
+		// Inheritance strategy can be specified on root entity only
+		if (!strategy || hasExtends) return null
 		String type = "SINGLE_TABLE"
 		if (strategy == "JOINED") type = "JOINED"
 		if (strategy == "CLASS") type = "TABLE_PER_CLASS"
 
 		return new Annotation(this, "javax.persistence.Inheritance")
 				.add("strategy", "javax.persistence.InheritanceType.${type}", false)
+	}
+
+	Annotation $track() {
+		if (!track) return null
+		return track.$track()
 	}
 
 	@Override

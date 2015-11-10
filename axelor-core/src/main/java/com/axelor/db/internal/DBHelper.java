@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -32,6 +33,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathFactory;
 
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.FlywayException;
 import org.w3c.dom.Document;
 
 import com.axelor.app.AppSettings;
@@ -44,7 +47,13 @@ import com.google.common.base.Throwables;
  */
 public class DBHelper {
 
+	private static Boolean unaccentSupport = null;
+
+	private static final String UNACCENT_CHECK = "SELECT unaccent('text')";
+	private static final String UNACCENT_CREATE = "CREATE EXTENSION IF NOT EXISTS unaccent";
+
 	private static final String XPATH_ROOT = "/persistence/persistence-unit[@name='persistenceUnit']";
+	private static final String XPATH_ROOT_TEST = "/persistence/persistence-unit[@name='testUnit']";
 
 	private static final String XPATH_NON_JTA_DATA_SOURCE 	= "non-jta-data-source";
 	private static final String XPATH_SHARED_CACHE_MODE 	= "shared-cache-mode";
@@ -74,9 +83,9 @@ public class DBHelper {
 	private DBHelper() {
 	}
 
-	private static String evaluate(XPath xpath, String path, Document document) {
+	private static String evaluate(XPath xpath, String base, String path, Document document) {
 		try {
-			return xpath.evaluate(XPATH_ROOT + "/" + path, document).trim();
+			return xpath.evaluate(base + "/" + path, document).trim();
 		} catch (Exception e) {
 		}
 		return null;
@@ -100,14 +109,20 @@ public class DBHelper {
 			final DocumentBuilder db = dbf.newDocumentBuilder();
 			final Document document = db.parse(res);
 
-			jndiName = evaluate(xpath, XPATH_NON_JTA_DATA_SOURCE, document);
-			cacheMode = evaluate(xpath, XPATH_SHARED_CACHE_MODE, document);
+			jndiName = evaluate(xpath, XPATH_ROOT, XPATH_NON_JTA_DATA_SOURCE, document);
+			cacheMode = evaluate(xpath, XPATH_ROOT, XPATH_SHARED_CACHE_MODE, document);
 
 			if (isBlank(jndiName) && isBlank(jdbcDriver)) {
-				jdbcDriver		= evaluate(xpath, XPATH_PERSISTENCE_DRIVER, document);
-				jdbcUrl 		= evaluate(xpath, XPATH_PERSISTENCE_URL, document);
-				jdbcUser 		= evaluate(xpath, XPATH_PERSISTENCE_USER, document);
-				jdbcPassword 	= evaluate(xpath, XPATH_PERSISTENCE_PASSWORD, document);
+				jdbcDriver		= evaluate(xpath, XPATH_ROOT, XPATH_PERSISTENCE_DRIVER, document);
+				jdbcUrl 		= evaluate(xpath, XPATH_ROOT, XPATH_PERSISTENCE_URL, document);
+				jdbcUser 		= evaluate(xpath, XPATH_ROOT, XPATH_PERSISTENCE_USER, document);
+				jdbcPassword 	= evaluate(xpath, XPATH_ROOT, XPATH_PERSISTENCE_PASSWORD, document);
+			}
+			if (isBlank(jndiName) && isBlank(jdbcDriver)) {
+				jdbcDriver		= evaluate(xpath, XPATH_ROOT_TEST, XPATH_PERSISTENCE_DRIVER, document);
+				jdbcUrl 		= evaluate(xpath, XPATH_ROOT_TEST, XPATH_PERSISTENCE_URL, document);
+				jdbcUser 		= evaluate(xpath, XPATH_ROOT_TEST, XPATH_PERSISTENCE_USER, document);
+				jdbcPassword 	= evaluate(xpath, XPATH_ROOT_TEST, XPATH_PERSISTENCE_PASSWORD, document);
 			}
 
 		} catch (Exception e) {
@@ -146,6 +161,24 @@ public class DBHelper {
 	}
 
 	/**
+	 * Run database migration scripts using flyway migration engine.
+	 * 
+	 */
+	public static void migrate() {
+		final Flyway flyway = new Flyway();
+		if (!isBlank(jndiName)) {
+			try {
+				flyway.setDataSource((DataSource) InitialContext.doLookup(jndiName));
+			} catch (NamingException e) {
+				throw new FlywayException(e);
+			}
+		} else {
+			flyway.setDataSource(jdbcUrl, jdbcUser, jdbcPassword);
+		}
+		flyway.migrate();
+	}
+
+	/**
 	 * Check whether non-jta data source is used.
 	 *
 	 */
@@ -161,6 +194,42 @@ public class DBHelper {
 		if (isBlank(cacheMode)) return false;
 		if (cacheMode.equals("ALL")) return true;
 		if (cacheMode.equals("ENABLE_SELECTIVE")) return true;
+		return false;
+	}
+
+	/**
+	 * Check whether the database has unaccent support.
+	 *
+	 */
+	public static boolean isUnaccentEnabled() {
+		if (unaccentSupport == null) {
+			try {
+				unaccentSupport = testUnaccent();
+			} catch (Exception e) {
+				unaccentSupport = Boolean.FALSE;
+			}
+		}
+		return unaccentSupport == Boolean.TRUE;
+	}
+
+	private static boolean testUnaccent() throws Exception {
+		Connection connection = getConnection();
+		Statement stmt = connection.createStatement();
+		try {
+			try {
+				stmt.executeQuery(UNACCENT_CHECK);
+				return true;
+			} catch (Exception e) {
+			}
+			try {
+				stmt.executeUpdate(UNACCENT_CREATE);
+				return true;
+			} catch (Exception e) {
+			}
+		} finally {
+			stmt.close();
+			connection.close();
+		}
 		return false;
 	}
 }

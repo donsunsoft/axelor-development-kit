@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -197,8 +199,8 @@ ui.directive('uiWidgetStates', ['$parse', '$interpolate', function($parse, $inte
 			values = _.extend({}, scope._context, values);
 		}
 		return _.extend(values, {
-			$user: __appSettings['user.login'],
-			$group: __appSettings['user.group']
+			$user: axelor.config['user.login'],
+			$group: axelor.config['user.group']
 		});
 	}
 	
@@ -233,7 +235,7 @@ ui.directive('uiWidgetStates', ['$parse', '$interpolate', function($parse, $inte
 		}
 
 		function handle(rec) {
-			var value = undefined;
+			var value;
 			try {
 				value = axelor.$eval(scope, expr, withContext(scope, rec));
 			} catch (e) {}
@@ -284,10 +286,10 @@ ui.directive('uiWidgetStates', ['$parse', '$interpolate', function($parse, $inte
 		var last = null;
 
 		function handle(rec) {
-			var value = undefined;
+			var value;
 			try {
 				value = expr(withContext(scope, rec)).trim();
-				if (value.length == 0) {
+				if (value.length === 0) {
 					value = null;
 				}
 			} catch (e) {}
@@ -349,4 +351,4 @@ ui.directive('uiWidgetStates', ['$parse', '$interpolate', function($parse, $inte
 	};
 }]);
 
-})(this);
+})();

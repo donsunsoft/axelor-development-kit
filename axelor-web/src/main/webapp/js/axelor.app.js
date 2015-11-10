@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -19,7 +19,9 @@
  * Application Module
  * 
  */
-(function($, undefined){
+(function() {
+
+	"use strict";
 	
 	var loadingElem = null,
 		loadingTimer = null,
@@ -35,7 +37,8 @@
 			loadingTimer = null;
 		}
 		if (loadingCounter > 0) {
-			return loadingTimer = _.delay(hideLoading, 500);
+			loadingTimer = _.delay(hideLoading, 500);
+			return;
 		}
 		loadingTimer = _.delay(function () {
 			loadingTimer = null;
@@ -54,7 +57,7 @@
 			loadingTimer = null;
 		}
 		
-		if (loadingElem == null) {
+		if (loadingElem === null) {
 			loadingElem = $('<div><span class="label label-important loading-counter">' + _t('Loading') + '...</span></div>')
 				.css({
 					position: 'fixed',
@@ -168,7 +171,6 @@
 		$routeProvider
 		
 		.when('/preferences', { action: 'preferences' })
-		.when('/welcome', { action: 'welcome' })
 		.when('/about', { action: 'about' })
 		.when('/system', { action: 'system' })
 		.when('/', { action: 'main' })
@@ -181,10 +183,46 @@
 	}]);
 	
 	module.config(['$httpProvider', function(provider) {
-		provider.responseInterceptors.push('httpIndicator');
+
+		var toString = Object.prototype.toString;
+
+		function isFile(obj) {
+			return toString.call(obj) === '[object File]';
+		}
+
+		function isFormData(obj) {
+			return toString.call(obj) === '[object FormData]';
+		}
+
+		function isBlob(obj) {
+			return toString.call(obj) === '[object Blob]';
+		}
+
+		// restore old behavior
+		// breaking change (https://github.com/angular/angular.js/commit/c054288c9722875e3595e6e6162193e0fb67a251)
+		function jsonReplacer(key, value) {
+			if (typeof key === 'string' && key.charAt(0) === '$') {
+				return undefined;
+			}
+			return value;
+		}
+
+		function transformRequest(d) {
+			return angular.isObject(d) && !isFile(d) && !isBlob(d) && !isFormData(d) ? JSON.stringify(d, jsonReplacer) : d;
+	    }
+
+		provider.interceptors.push('httpIndicator');
 		provider.defaults.transformRequest.push(onHttpStart);
+		provider.defaults.transformRequest.unshift(transformRequest);
+		provider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
+		provider.useApplyAsync(true);
 	}]);
-	
+
+	// only enable animation on element with ng-animate css class
+	module.config(['$animateProvider', function($animateProvider) {
+        $animateProvider.classNameFilter(/x-animate/);
+    }]);
+
 	module.factory('httpIndicator', ['$rootScope', '$q', function($rootScope, $q){
 		
 		var doc = $(document);
@@ -210,7 +248,7 @@
 
 		function block(callback) {
 			if (blocked) return true;
-			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; };
+			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; }
 			if (loadingCounter > 0 || blockedCounter > 0) {
 				blocked = true;
 				doc.on("keydown.blockui mousedown.blockui", function(e) {
@@ -228,7 +266,7 @@
 		}
 
 		function unblock(callback) {
-			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; };
+			if (blockedTimer) { clearTimeout(blockedTimer); blockedTimer = null; }
 			if (loadingCounter > 0 || blockedCounter > 0 || loadingTimer) {
 				if (spinnerTime === 0) {
 					spinnerTime = moment();
@@ -240,7 +278,8 @@
 				if (blockedCounter > 0) {
 					blockedCounter = blockedCounter - 10;
 				}
-				return blockedTimer = _.delay(unblock, 200, callback);
+				blockedTimer = _.delay(unblock, 200, callback);
+				return;
 			}
 			doc.off("keydown.blockui mousedown.blockui");
 			body.css("cursor", "");
@@ -264,19 +303,22 @@
 			return unblock();
 		};
 
-		return function(promise) {
-			return promise.then(function(response){
-				onHttpStop();
+		return {
+			response: function(response) {
+				if (!response.config || !response.config.silent) {
+					onHttpStop();
+				}
 				if (response.data && response.data.status === -1) {
 					$rootScope.$broadcast('event:http-error', response.data);
 					return $q.reject(response);
 				}
 				return response;
-			}, function(error) {
+			},
+			responseError: function(error) {
 				onHttpStop();
 				$rootScope.$broadcast('event:http-error', error);
 				return $q.reject(error);
-			});
+			}
 		};
 	}]);
 	
@@ -298,55 +340,42 @@
 	
 	module.controller('AppCtrl', AppCtrl);
 	
-	AppCtrl.$inject = ['$rootScope', '$exceptionHandler', '$scope', '$http', '$route', 'authService'];
-	function AppCtrl($rootScope, $exceptionHandler, $scope, $http, $route, authService) {
-		
-		function getAppInfo(settings) {
-			
-			var info = {
-				name: settings['application.name'],
-				description: settings['application.description'],
-				version: settings['application.version'],
-				author: settings['application.author'],
-				copyright: settings['application.copyright'],
-				home: settings['application.home'],
-				help: settings['application.help'],
-				mode: settings['application.mode'],
-				sdk: settings['application.sdk'],
-				user: settings['user.name'],
-				login: settings['user.login'],
-				homeAction: settings['user.action'],
-				navigator: settings['user.navigator'],
-				fileUploadSize: settings['file.upload.size']
-			};
+	AppCtrl.$inject = ['$rootScope', '$exceptionHandler', '$scope', '$http', '$route', 'authService', 'MessageService', 'NavService'];
+	function AppCtrl($rootScope, $exceptionHandler, $scope, $http, $route, authService, MessageService, NavService) {
 
-			if (settings['view.confirm.yes-no'] === true) {
-				_.extend(axelor.dialogs.config, {
-					yesNo: true
-				});
-			}
-			
-			return info;
-		}
-	
-		function appInfo() {
-			$http.get('ws/app/info').then(function(response){
-				var settings = response.data;
-				angular.extend($scope.app, getAppInfo(settings));
+		function fetchConfig() {
+			return $http.get('ws/app/info').then(function(response) {
+				_.extend(axelor.config, response.data);
 			});
 		}
-	
-		// See index.jsp
-		$scope.app = getAppInfo(__appSettings);
+
+		// load app config
+		fetchConfig().then(function () {
+			$scope.$user.id = axelor.config["user.id"];
+			$scope.$user.name = axelor.config["user.name"];
+			$scope.$user.image = axelor.config["user.image"];
+		});
+
+		$scope.$user = {};
 		$scope.$year = moment().year();
-	
+		$scope.$unreadMailCount = function () {
+			return MessageService.unreadCount();
+		};
+
+		$scope.showMailBox = function() {
+			NavService.openTabByName('mail.inbox');
+			$scope.$timeout(function () {
+				$scope.$broadcast("on:nav-click", NavService.getSelected());
+			});
+		};
+
 		var loginAttempts = 0;
 		var loginWindow = null;
 		var errorWindow = null;
 		
 		function showLogin(hide) {
 			
-			if (loginWindow == null) {
+			if (loginWindow === null) {
 				loginWindow = $('#loginWindow')
 				.attr('title', _t('Log in'))
 				.dialog({
@@ -376,7 +405,7 @@
 		}
 	
 		function showError(hide) {
-			if (errorWindow == null) {
+			if (errorWindow === null) {
 				errorWindow = $('#errorWindow')
 				.attr('title', _t('Error'))
 				.dialog({
@@ -425,6 +454,12 @@
 				.dialog('widget').css('top', 6)
 				.height('auto');
 		}
+
+		function showNotification(options) {
+			axelor.notify.error('<p>' + options.message.replace('\n', '<br>') + '</p>', {
+				title: options.title || options.type || _t('Error')
+			});
+		}
 	
 		$scope.doLogin = function() {
 			
@@ -432,11 +467,16 @@
 				username: $('#loginWindow form input:first').val(),
 				password: $('#loginWindow form input:last').val()
 			};
-			
+
+			var last = axelor.config["user.login"];
+
 			$http.post('login.jsp', data).then(function(response){
 				authService.loginConfirmed();
 				$('#loginWindow form input').val('');
 				$('#loginWindow .alert').hide();
+				if (last !== data.username) {
+					window.location.reload();
+				}
 			});
 		};
 		
@@ -454,7 +494,7 @@
 		$scope.$on('event:auth-loginConfirmed', function() {
 			showLogin(true);
 			loginAttempts = 0;
-			appInfo();
+			fetchConfig();
 		});
 		
 		$scope.httpError = {};
@@ -467,11 +507,13 @@
 				exception = report['class'] || '';
 				
 				if (exception.match(/(OptimisticLockException|StaleObjectStateException)/)) {
-					message = "<b>" + _t('Concurrent updates error.') + '</b><br>' + message;
+					message = "<b>" + _t('Concurrent updates error') + '</b><br>' + message;
 				}
 	
 				stacktrace = report.stacktrace;
 				cause = report.cause;
+			} else if (report.message) {
+				return showNotification(report);
 			} else if (_.isString(report)) {
 				stacktrace = report.replace(/.*<body>|<\/body>.*/g, '');
 			} else {
@@ -490,17 +532,24 @@
 		
 		$scope.$on('$routeChangeSuccess', function(event, current, prev) {
 	
-			var route = current.$route,
+			var route = current.$$route,
 				path = route && route.action ? route.action.split('.') : null;
 	
-			if (path == null)
-				return;
-	
-			$scope.routePath = path;
+			if (path) {
+				$scope.routePath = path;
+			}
 		});
 		
 		$scope.routePath = ["main"];
 		$route.reload();
 	}
 
-})(jQuery);
+    //trigger adjustSize event on window resize -->
+	$(function(){
+		$(window).resize(function(event){
+			if (!event.isTrigger)
+				$.event.trigger('adjustSize');
+		});
+	});
+
+})();

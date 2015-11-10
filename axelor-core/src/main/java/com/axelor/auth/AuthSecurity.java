@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,9 +17,6 @@
  */
 package com.axelor.auth;
 
-import groovy.lang.Binding;
-import groovy.lang.GroovyShell;
-
 import java.util.List;
 import java.util.Set;
 
@@ -28,7 +25,6 @@ import javax.inject.Singleton;
 
 import org.apache.shiro.authz.UnauthorizedException;
 
-import com.axelor.auth.db.Group;
 import com.axelor.auth.db.Permission;
 import com.axelor.auth.db.User;
 import com.axelor.db.JpaSecurity;
@@ -38,6 +34,9 @@ import com.axelor.rpc.filter.JPQLFilter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
 
 @Singleton
 class AuthSecurity implements JpaSecurity, Provider<JpaSecurity> {
@@ -86,11 +85,7 @@ class AuthSecurity implements JpaSecurity, Provider<JpaSecurity> {
 
 	private User getUser() {
 		final User user = AuthUtils.getUser();
-		final Group group = user != null ? user.getGroup() : null;
-		if (user == null || "admin".equals(user.getCode())) {
-			return null;
-		}
-		if (group != null && "admins".equals(group.getCode())) {
+		if (user == null || AuthUtils.isAdmin(user)) {
 			return null;
 		}
 		return user;

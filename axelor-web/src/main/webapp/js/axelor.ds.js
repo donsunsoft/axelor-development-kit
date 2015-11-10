@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,6 +17,8 @@
  */
 (function() {
 
+	"use strict";
+
 	var ds = angular.module('axelor.ds', ['ngResource']);
 
 	var forEach = angular.forEach,
@@ -28,6 +30,7 @@
 		function get(parent) {
 
 			return $http.get('ws/action/menu', {
+				cache: true,
 				params : {
 					parent : parent
 				}
@@ -35,7 +38,16 @@
 		}
 
 		function all() {
-			return $http.get('ws/action/menu/all');
+			return $http.get('ws/action/menu/all', {
+				cache: true
+			});
+		}
+
+		function tags() {
+			return $http.get('ws/action/menu/tags', {
+				silent: true,
+				transformRequest: []
+			});
 		}
 
 		function action(name, options) {
@@ -49,6 +61,7 @@
 		return {
 			get: get,
 			all: all,
+			tags: tags,
 			action: action
 		};
 	}]);
@@ -60,12 +73,10 @@
 		};
 
 		ViewService.prototype.accept = function(params) {
-			views = {};
+			var views = {};
 			forEach(params.views, function(view){
 				var type = view.type || view.viewType;
-				if (params.viewType == null) {
-					params.viewType = type;
-				}
+				params.viewType = params.viewType || type;
 				views[type] = extend({}, view, {
 					deferred: $q.defer()
 				});
@@ -154,7 +165,7 @@
 				if (my !== menubar && menubar) {
 					my = my.concat(menubar);
 				}
-				return view.menubar = my;
+				view.menubar = my;
 			}
 			function useToolbar(toolbar) {
 				if (!toolbar) return;
@@ -162,10 +173,10 @@
 				if (my !== toolbar) {
 					my = my.concat(toolbar);
 				}
-				return view.toolbar = my;
+				view.toolbar = my;
 			}
 			function useItems(view) {
-				return useIncluded(view)
+				return useIncluded(view);
 			}
 
 			var items = [];
@@ -175,7 +186,7 @@
 					if (item.view) {
 						items = items.concat(useItems(item.view));
 						useMenubar(item.view.menubar);
-						useToolbar(item.view.toolbar)
+						useToolbar(item.view.toolbar);
 					}
 				} else {
 					items.push(item);
@@ -230,6 +241,10 @@
 				items.push(view.eventStop);
 				items.push(view.colorBy);
 			}
+			if (view.type === "kanban") {
+				items.push(view.columnBy);
+				items.push(view.sequenceBy);
+			}
 
 			return result;
 		}
@@ -252,7 +267,7 @@
 			viewCache.put(key, angular.copy(result));
 		}
 
-		ViewService.prototype.getMetaDef = function(model, view) {
+		ViewService.prototype.getMetaDef = function(model, view, context) {
 
 			var self = this,
 				hasItems = _.isArray(view.items),
@@ -335,14 +350,14 @@
 
 			if (hasItems) {
 				return loadFields({view: view});
-			};
+			}
 
-			$http.get('ws/meta/view', {
-				cache: true,
-				params: {
-					model: model,
+			$http.post('ws/meta/view', {
+				model: model,
+				data: {
 					type: view.type,
-					name: view.name
+					name: view.name,
+					context: context
 				}
 			}).then(function(response) {
 				var res = response.data,
@@ -426,8 +441,29 @@
 			return promise;
 		};
 
+		ViewService.prototype.save = function(schema) {
+			var promise = $http.post("ws/meta/view/save", {
+				data: schema
+			});
+
+			promise.success = function(fn) {
+				promise.then(function(response) {
+					var res = response.data,
+						data = res.data;
+					fn(data);
+				});
+				return promise;
+			};
+
+			promise.error = function(fn) {
+				promise.then(null, fn);
+				return promise;
+			};
+
+			return promise;
+		};
+
 		return new ViewService();
 	}]);
 
-
-})(this);
+})();

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,6 +17,11 @@
  */
 package com.axelor.web.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DefaultValue;
@@ -29,6 +34,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
 import com.axelor.meta.ActionHandler;
+import com.axelor.meta.schema.views.MenuItem;
 import com.axelor.meta.service.MetaService;
 import com.axelor.rpc.ActionRequest;
 import com.axelor.rpc.Response;
@@ -43,9 +49,6 @@ public class ActionService extends AbstractService {
 	@Inject
 	private MetaService service;
 	
-	@Inject
-	private ActionHandler handler;
-
 	@GET
 	@Path("menu")
 	public Response menu(@QueryParam("parent") @DefaultValue("") String parent) {
@@ -76,15 +79,38 @@ public class ActionService extends AbstractService {
 		return response;
 	}
 
+	@GET
+	@Path("menu/tags")
+	public Response tags() {
+		Response response = new Response();
+		List<Object> data = new ArrayList<>();
+		try {
+			for (MenuItem item : service.getMenusWithTag()) {
+				Map<String, Object> tag = new HashMap<>();
+				tag.put("name", item.getName());
+				tag.put("tag", item.getTag());
+				tag.put("tagStyle", item.getTagStyle());
+				data.add(tag);
+			}
+			response.setData(data);
+			response.setStatus(Response.STATUS_SUCCESS);
+		} catch (Exception e) {
+			if (LOG.isErrorEnabled())
+				LOG.error(e.getMessage(), e);
+			response.setException(e);
+		}
+		return response;
+	}
+
 	@POST
 	public Response execute(ActionRequest request) {
-		return handler.forRequest(request).execute();
+		return new ActionHandler(request).execute();
 	}
 
 	@POST
 	@Path("{action}")
 	public Response execute(@PathParam("action") String action, ActionRequest request) {
 		request.setAction(action);
-		return handler.forRequest(request).execute();
+		return new ActionHandler(request).execute();
 	}
 }

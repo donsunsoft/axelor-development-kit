@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -36,15 +36,15 @@ class Repository {
 
 		this.entity = entity
 
-		this.namespace = "${entity.namespace}.repo"
-		this.baseClass = "JpaRepository<${entity.name}>";
+		this.namespace = entity.repoNamespace
+		this.baseClass = "JpaRepository<${entity.name}>"
 		this.modelClass = entity.name
 		this.name = "${entity.name}Repository"
 
-		this.importManager = new ImportManager(this.namespace, false);
+		this.importManager = new ImportManager(this.namespace, false)
 
-		this.importManager.importType("com.axelor.db.JpaRepository");
-		this.importManager.importType("${entity.namespace}.${entity.name}");
+		this.importManager.importType("com.axelor.db.JpaRepository")
+		this.importManager.importType("${entity.namespace}.${entity.name}")
 	}
 
 	String getClassName() {

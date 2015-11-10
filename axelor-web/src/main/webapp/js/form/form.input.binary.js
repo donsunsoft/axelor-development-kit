@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,12 +15,23 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
 var BLANK = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 var META_FILE = "com.axelor.meta.db.MetaFile";
+
+function makeURL(model, field, recordOrId) {
+	var value = recordOrId;
+	if (!value) return null;
+	var id = value.id ? value.id : value;
+	var version = value.version || value.$version || (new Date()).getTime();
+	if (!id || id <= 0) return null;
+	return "ws/rest/" + model + "/" + id + "/" + field + "/download?v=" + version;
+}
 
 ui.formInput('ImageLink', {
 	css: 'image-item',
@@ -29,7 +40,8 @@ ui.formInput('ImageLink', {
 	controller: ['$scope', '$element', '$interpolate', function($scope, $element, $interpolate) {
 
 		$scope.parseText = function(text) {
-			if (!text|| !text.match(/{{.*?}}/)) {
+			if (!text) return BLANK;
+			if (!text.match(/{{.*?}}/)) {
 				return text;
 			}
 			return $interpolate(text)($scope.record);
@@ -66,21 +78,15 @@ ui.formInput('ImageLink', {
 	link_readonly: function(scope, element, attrs, model) {
 
 		var image = element.children('img:first');
-		var rendered = false;
 
 		scope.$render_readonly = function() {
-			var content = model.$viewValue || null;
-			var x = scope.parseText(content) || BLANK;
-			if (!content) {
-				image.get(0).src = BLANK;
-			}
-			image.get(0).src = scope.parseText(content) || BLANK;
+			image.get(0).src = scope.parseText(model.$viewValue) || BLANK;
 		};
 
-		scope.$watch('isReadonly()', function(readonly, old) {
-			if (rendered && (!readonly || readonly === old)) return;
-			rendered = true;
-			scope.$render_readonly();
+		scope.$watch("record.id", function(id, old) {
+			if (scope.isReadonly()) {
+				scope.$render_readonly();
+			}
 		});
 	},
 	template_editable: '<input type="text">',
@@ -107,10 +113,14 @@ ui.formInput('Image', 'ImageLink', {
 		};
 
 		scope.getLink = function (value) {
-			if (!value || isBinary) {
-				return value || BLANK;
+			var record = scope.record || {};
+			var model = scope._model;
+			if (!record.id || value === null) return value || BLANK;
+			if (isBinary) {
+				if (value) return value;
+				return makeURL(model, field.name, record) + "&image=true";
 			}
-			return "ws/rest/" + META_FILE + "/" + (value.id || value) + "/content/download";
+			return makeURL(META_FILE, "content", (value.id || value));
 		};
 	},
 
@@ -158,7 +168,7 @@ ui.formInput('Image', 'ImageLink', {
 
 		input.change(function(e, ui) {
 			var file = input.get(0).files[0];
-			var uploadSize = scope.$eval('app.fileUploadSize');
+			var uploadSize = axelor.config["file.upload.size"];
 
 			// reset file selection
 			input.get(0).value = null;
@@ -183,25 +193,22 @@ ui.formInput('Image', 'ImageLink', {
 			reader.readAsDataURL(file);
 		});
 		
-		function doProgress(n) {
-
-		}
-		
 		function doUpload(file) {
 			var ds = scope._dataSource._new(META_FILE);
+			var value = field.target === META_FILE ? (scope.getValue()||{}) : {};
 			var record = {
 				fileName: file.name,
-				mime: file.type,
-				size: file.size,
-				id: null,
-				version: null
+				fileType: file.type,
+				fileSize: file.size,
+				id: value.id,
+				version: value.version || value.$version
 		    };
 
 			record.$upload = {
 			    file: file
 		    };
 
-			ds.save(record).progress(doProgress).success(function (saved) {
+			ds.save(record).success(function (saved) {
 				update(saved);
 			});
 		}
@@ -229,6 +236,12 @@ ui.formInput('Image', 'ImageLink', {
 		scope.$render_editable = function() {
 			image.get(0).src = scope.getLink(model.$viewValue);
 		};
+
+		scope.$watch("record.id", function(id, old) {
+			if (!scope.isReadonly()) {
+				scope.$render_editable();
+			}
+		});
 	},
 	template_editable:
 	'<div ng-style="styles[0]" class="image-wrapper">' +
@@ -250,21 +263,16 @@ ui.formInput('Binary', {
 
 		var field = scope.field;
 		var input = element.children('input:first').hide();
-		var frame = element.children("iframe").hide();
 
 		scope.doSelect = function() {
 			input.click();
 		};
 
 		scope.doSave = function() {
-			var record = scope.record,
-				model = scope._model;
-
-			var url = "ws/rest/" + model + "/" + record.id + "/" + field.name + "/download";
-			frame.attr("src", url);
-			setTimeout(function(){
-				frame.attr("src", "");
-			}, 300);
+			var record = scope.record;
+			var model = scope._model;
+			var url = makeURL(model, field.name, record);
+			ui.download(url, record.fileName || field.name);
 		};
 
 		scope.doRemove = function() {
@@ -274,9 +282,9 @@ ui.formInput('Binary', {
 			record.$upload = null;
 			if(scope._model === META_FILE) {
 				record.fileName = null;
-				record.mime = null;
+				record.fileType = null;
 			}
-			record.size = null;
+			record.fileSize = null;
 		};
 
 		scope.canDownload = function() {
@@ -300,11 +308,11 @@ ui.formInput('Binary', {
 					field: field.name,
 					file: file
 				};
-				if(scope._model === META_FILE && !record.fileName) {
+				if(scope._model === META_FILE) {
 					record.fileName = file.name;
 				}
-				record.mime = file.type;
-				record.size = file.size;
+				record.fileType = file.type;
+				record.fileSize = file.size;
 				scope.applyLater(function() {
 					model.$setViewValue(0); // mark form for save
 				});
@@ -315,7 +323,6 @@ ui.formInput('Binary', {
 	template_editable: null,
 	template:
 	'<div>' +
-		'<iframe></iframe>' +
 		'<input type="file">' +
 		'<div class="btn-group">' +
 			'<button ng-click="doSelect()" ng-show="!isReadonly()" class="btn" type="button"><i class="fa fa-arrow-circle-up"></i></button>' +
@@ -325,4 +332,88 @@ ui.formInput('Binary', {
 	'</div>'
 });
 
-})(this);
+ui.formInput('BinaryLink', {
+
+	css: 'file-item',
+	cellCss: 'form-item file-item',
+
+	link: function(scope, element, attrs, model) {
+
+		var field = scope.field;
+		var input = element.children('input:first').hide();
+
+		if (field.target !== META_FILE) {
+			throw new Error("BinaryLink widget can be used with MetaFile field only.");
+		}
+
+		scope.doSelect = function() {
+			input.click();
+		};
+
+		scope.doRemove = function() {
+			input.val(null);
+			scope.setValue(null, true);
+		};
+
+		scope.canDownload = function() {
+			var value = model.$viewValue;
+			return value && value.id > 0;
+		};
+
+		scope.format = function (value) {
+			if (value) {
+				return value.fileName;
+			}
+			return value;
+		};
+
+		scope.doSave = function() {
+			var value = model.$viewValue;
+			var url = makeURL(META_FILE, "content", value);
+			ui.download(url, scope.text);
+		};
+
+		input.change(function(e) {
+			var file = input.get(0).files[0];
+
+			// reset file selection
+			input.get(0).value = null;
+
+			if (!file) {
+				return;
+			}
+
+			var ds = scope._dataSource._new(META_FILE);
+			var value = scope.getValue() || {};
+			var record = _.extend({
+				fileName: file.name,
+				fileType: file.type,
+				fileSize: file.size
+			}, {
+				id: value.id,
+				version: value.version || value.$version
+			});
+
+			record.$upload = {
+				file: file
+			};
+
+			ds.save(record).success(function (rec) {
+				scope.setValue(rec, true);
+			});
+		});
+	},
+	template_readonly: null,
+	template_editable: null,
+	template:
+	'<div>' +
+		'<input type="file">' +
+		'<div class="btn-group">' +
+			'<button ng-click="doSelect()" ng-show="!isReadonly()" class="btn" type="button"><i class="fa fa-arrow-circle-up"></i></button>' +
+			'<button ng-click="doRemove()" ng-show="canDownload() && !isReadonly()" class="btn" type="button"><i class="fa fa-times"></i></button>' +
+		'</div> ' +
+		'<a ng-show="text" href="javascript:" ng-click="doSave()">{{text}}</a>' +
+	'</div>'
+});
+
+})();

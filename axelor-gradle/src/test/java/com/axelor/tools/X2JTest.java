@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -33,8 +33,6 @@ public class X2JTest {
 
 	@Test
 	public void testDomains() throws IOException {
-
-		System.setProperty("codegen.pojo", "true");
 
 		File domainPath = new File("src/test/resources/domains");
 		File outputPath = new File("build/src-gen");

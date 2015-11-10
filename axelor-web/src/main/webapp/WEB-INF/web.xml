@@ -6,6 +6,7 @@
 
   <display-name>Axelor SDK</display-name>
 
+  <!-- Guice Filter -->
   <filter>
     <filter-name>guiceFilter</filter-name>
     <filter-class>com.google.inject.servlet.GuiceFilter</filter-class>
@@ -15,12 +16,28 @@
     <url-pattern>/*</url-pattern>
   </filter-mapping>
 
+  <!-- Guice Listener (with RESTEasy bootstrap) -->
   <listener>
     <listener-class>com.axelor.web.AppContextListener</listener-class>
   </listener>
 
+  <!-- RESTEasy servlet -->
+  <context-param>
+    <param-name>resteasy.servlet.mapping.prefix</param-name>
+    <param-value>/ws</param-value>
+  </context-param>
+  <servlet>
+    <servlet-name>Resteasy</servlet-name>
+    <servlet-class>org.jboss.resteasy.plugins.server.servlet.HttpServletDispatcher</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>Resteasy</servlet-name>
+    <url-pattern>/ws/*</url-pattern>
+  </servlet-mapping>
+
   <!-- prevent session id in url (tomcat) -->
   <session-config>
+    <session-timeout>60</session-timeout>
     <tracking-mode>COOKIE</tracking-mode>
   </session-config>
 
@@ -45,6 +62,7 @@
   <!-- welcome page -->
   <welcome-file-list>
     <welcome-file>index.jsp</welcome-file>
+    <welcome-file>index.html</welcome-file>
   </welcome-file-list>
 
 </web-app>

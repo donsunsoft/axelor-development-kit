@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(undefined){
+(function() {
+
+/* global Slick: true */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -94,7 +98,7 @@ var Editor = function(args) {
 	element.data('$parent', element.parent());
 	element.data('$editorForm', form);
 
-	external = element.is('.text-item');
+	external = element.is('.text-item,.html-item');
 
 	this.init = function() {
 
@@ -110,9 +114,10 @@ var Editor = function(args) {
 		}
 
 		element.css('display', 'inline-block')
+			.addClass('slick-external-editor')
 			.appendTo(container);
 
-		if (element.data('keydown.nav') == null) {
+		if (!element.data('keydown.nav')) {
 			element.data('keydown.nav', true);
 			element.bind("keydown.nav", function (e) {
 				switch (e.keyCode) {
@@ -150,7 +155,7 @@ var Editor = function(args) {
 			return true;
 		}
 		return false;
-	}
+	};
 	
 	this.destroy = function() {
 		scope.$lastEditor = this;
@@ -171,7 +176,7 @@ var Editor = function(args) {
 		if (external) {
 			setTimeout(adjustExternal);
 		}
-	}
+	};
 
 	function adjustExternal() {
 
@@ -189,7 +194,12 @@ var Editor = function(args) {
 			width: container.width(),
 			zIndex: zIndex + 1
 		});
-	};
+
+		// focus html editor
+		if (element.is('.html-item')) {
+			element.find('[contenteditable]').focus();
+		}
+	}
 	
 	function focus() {
 		// Firefox throws exception if element is hidden
@@ -307,13 +317,11 @@ var Formatters = {
 	},
 	
 	"one-to-one": function(field, value) {
-		var text = (value||{})[field.targetName];
-		return text ? _.escapeHTML(text) : "";
+		return value ? value[field.targetName] : "";
 	},
 
 	"many-to-one": function(field, value) {
-		var text = (value||{})[field.targetName];
-		return text ? _.escapeHTML(text) : "";
+		return value ? value[field.targetName] : "";
 	},
 	
 	"one-to-many": function(field, value) {
@@ -331,18 +339,18 @@ var Formatters = {
 		
 		if (field.readonlyIf && axelor.$eval(grid.scope, field.readonlyIf, context)) {
 			css += " readonly disabled";
-		};
+		}
 		
 		if(isIcon) {
 			elem = '<a href="javascript: void(0)" tabindex="-1"';
 			if (field.help) {
-				elem += ' title="' + _.escapeHTML(field.help) + '"';
+				elem += ' title="' + field.help + '"';
 			}
 			elem += '><i class="' + css + '"></i></a>';
 		} else {
 			elem = '<img class="' + css + '" src="' + field.icon + '"';
 			if (field.help) {
-				elem += ' title="' + _.escapeHTML(field.help) + '"';
+				elem += ' title="' + field.help + '"';
 			}
 			elem += '>';
 		}
@@ -362,18 +370,33 @@ var Formatters = {
 		var res = _.find(field.selectionList, function(item){
 			return cmp(item.value, value);
 		}) || {};
-		return _.isString(res.title) ? _.escapeHTML(res.title) : res.title;
+
+		if (field.widget === 'ImageSelect' && res.icon) {
+			var image = "<img style='max-height: 24px;' src='" + (res.icon || res.value) + "'>";
+			if (field.labels === false) {
+				return image;
+			}
+			return image + " " + res.title;
+		}
+		return res.title;
 	},
 
 	"url": function(field, value) {
-		return '<a target="_blank" ng-show="text" href="' + _.escapeHTML(value) + '">' + _.escapeHTML(value) + '</a>';
+		return '<a target="_blank" ng-show="text" href="' + value + '">' + value + '</a>';
+	},
+	
+	"icon": function(field, value) {
+		if (value && value.indexOf("fa-") > -1) {
+			return '<i class="slick-icon ' + value + '"></i>';
+		}
+		return Formatters.button(field, value);
 	}
 };
 
 function totalsFormatter(totals, columnDef) {
 	
 	var field = columnDef.descriptor;
-	if (field.aggregate == null) {
+	if (!field.aggregate) {
 		return "";
 	}
 
@@ -402,10 +425,10 @@ _.extend(Factory.prototype, {
 		if (field.type == 'binary') {
 			return null;
 		}
-		if (col.editor) {
-			return col.editor;
+		if (!col.editor) {
+			col.editor = Editor;
 		}
-		return col.editor = Editor;
+		return col.editor;
 	},
 	
 	getFormatter: function(col) {
@@ -434,18 +457,14 @@ _.extend(Factory.prototype, {
 			type = widget.toLowerCase();
 		}
 
+		var fn = Formatters[type];
+		if (fn) {
+			value = fn(field, value, dataContext, this.grid);
+		}
 		if (value === null || value === undefined || (_.isObject(value) && _.isEmpty(value))) {
 			return "";
 		}
-
-		var formatter = Formatters[type];
-		if (formatter) {
-			value = formatter(field, value, dataContext, this.grid);
-		} else if (_.isString(value)) {
-			value = _.escapeHTML(value);
-		}
-
-		return value === undefined ? '' : value;
+		return value;
 	},
 	
 	formatProgress: function(field, value) {
@@ -536,7 +555,7 @@ Grid.prototype.parse = function(view) {
 		var field = handler.fields[item.name] || {},
 			path = handler.formPath, type;
 
-		type = field.type || item.serverType || item.type || 'string';
+		type = (item.widgetAttrs||{}).type || field.type || item.serverType || item.type || 'string';
 
 		field = _.extend({}, field, item, {type: type});
 		scope.fields_view[item.name] = field;
@@ -552,13 +571,14 @@ Grid.prototype.parse = function(view) {
 		
 		var sortable = true;
 		switch (field.type) {
+		case 'icon':
 		case 'button':
 		case 'one-to-many':
 		case 'many-to-many':
 			sortable = false;
 			break;
 		default:
-			sortable: true;
+			sortable = true;
 		}
 
 		if (field.type == "button") {
@@ -567,6 +587,9 @@ Grid.prototype.parse = function(view) {
 			field.handler = that.newActionHandler(buttonScope(scope), element, {
 				action: field.onClick
 			});
+		}
+
+		if (field.type == "button" || field.type == "icon") {
 			item.title = "&nbsp;";
 			item.width = 10;
 		}
@@ -589,7 +612,7 @@ Grid.prototype.parse = function(view) {
 		if (!field.readonly && item.forEdit !== false) {
 			css.push('slick-cell-editable');
 			if (field.required) {
-				css.push('slick-cell-required')
+				css.push('slick-cell-required');
 			}
 		}
 		column.cssClass = css.join(' ');
@@ -600,7 +623,7 @@ Grid.prototype.parse = function(view) {
 			column.groupTotalsFormatter = totalsFormatter;
 		}
 		
-		if (field.type === "button" || field.type === "boolean") {
+		if (field.type === "button" || field.type === "boolean" || field.type === "icon") {
 			return;
 		}
 
@@ -689,6 +712,26 @@ Grid.prototype.parse = function(view) {
 		}));
 	}
 	
+	// add column for re-ordering rows
+	this._canMove = view.canMove && view.orderBy === "sequence" && !view.groupBy;
+	if (this._canMove) {
+		cols.push({
+			id: "_move_column",
+		    name: "",
+		    width: 32,
+		    behavior: "selectAndMove",
+		    selectable: false,
+		    resizable: false,
+		    cssClass: "fa fa-bars move-icon",
+		    canMove: function () {
+		    	if (handler.isReadonly && handler.isReadonly()) {
+		    		return false;
+		    	}
+		    	return true;
+		    }
+		});
+	}
+
 	var factory = new Factory(this);
 
 	var options = {
@@ -712,7 +755,7 @@ Grid.prototype.parse = function(view) {
 	
 	this._selectColumn = selectColumn;
 	this._editColumn = editColumn;
-	
+
 	element.show();
 	element.data('grid', grid);
 	
@@ -750,8 +793,9 @@ Grid.prototype.parse = function(view) {
 	handler._dataSource.on('change', function (e, records, page) {
 		element.toggleClass('slickgrid-empty-message', page && page.size === 0);
 	});
-
-	element.append($("<div class='slickgrid-empty-text'>").hide().text(_t("No records found.")));
+	
+	var emptyMessage = handler.$emptyMessage || _t("No records found.");
+	element.append($("<div class='slickgrid-empty-text'>").hide().text(emptyMessage));
 
 	return grid;
 };
@@ -769,6 +813,10 @@ Grid.prototype._doInit = function(view) {
 		buttonImage: "lib/slickgrid/images/down.gif"
 	});
 
+	var rowMoveManager = new Slick.RowMoveManager({
+		cancelEditOnDrag: true
+	});
+
 	grid.setSelectionModel(new Slick.RowSelectionModel());
 	grid.registerPlugin(new Slick.Data.GroupItemMetadataProvider());
 	grid.registerPlugin(headerMenu);
@@ -777,6 +825,9 @@ Grid.prototype._doInit = function(view) {
 	}
 	if (this._editColumn) {
 		grid.registerPlugin(this._editColumn);
+	}
+	if (this._canMove) {
+		grid.registerPlugin(rowMoveManager);
 	}
 
 	// performance tweaks
@@ -809,7 +860,11 @@ Grid.prototype._doInit = function(view) {
         	grid.focus();
         }
 	};
-	
+
+	if (this._canMove) {
+		dataView.$resequence = _.bind(this._resequence, this);
+	}
+
 	// register grid event handlers
 	this.subscribe(grid.onSort, this.onSort);
 	this.subscribe(grid.onSelectedRowsChanged, this.onSelectionChanged);
@@ -827,6 +882,10 @@ Grid.prototype._doInit = function(view) {
 	// register header menu event handlers
 	this.subscribe(headerMenu.onBeforeMenuShow, this.onBeforeMenuShow);
 	this.subscribe(headerMenu.onCommand, this.onMenuCommand);
+
+	// register row move handlers
+	this.subscribe(rowMoveManager.onBeforeMoveRows, this.onBeforeMoveRows);
+	this.subscribe(rowMoveManager.onMoveRows, this.onMoveRows);
 
 	// hilite support
 	var getItemMetadata = dataView.getItemMetadata;
@@ -858,6 +917,7 @@ Grid.prototype._doInit = function(view) {
 		var filtersRow = $(grid.getHeaderRow());
 
 		function updateFilters(event) {
+			/* jshint validthis: true */
 			var elem = $(this);
 			if (elem.is('.ui-autocomplete-input')) {
 				return;
@@ -892,7 +952,7 @@ Grid.prototype._doInit = function(view) {
 					});
 				}
 			});
-		};
+		}
 
 		var _setColumns = grid.setColumns;
 		grid.setColumns = function(columns) {
@@ -1090,10 +1150,8 @@ Grid.prototype.showColumn = function(name, show) {
 		grid = this.grid,
 		cols = this.cols;
 	
-	if (this.visibleCols == null) {
-		this.visibleCols = _.pluck(cols, 'id');
-	}
-	
+	this.visibleCols = this.visibleCols || _.pluck(cols, 'id');
+
 	show = _.isUndefined(show) ? true : show;
 	
 	var visible = [],
@@ -1189,8 +1247,8 @@ Grid.prototype.hilite = function (row, field) {
 	}
 	
 	for (var i = 0; i < hilites.length; i++) {
-		var params = hilites[i],
-			condition = params.condition,
+		params = hilites[i];
+		var condition = params.condition,
 			styles = null,
 			pass = false;
 		
@@ -1254,12 +1312,24 @@ Grid.prototype.onMenuCommand = function(event, args) {
 		return grid.onSort.notify(opts, event, grid);
 	}
 	
+	var groups, index;
+
 	if (args.command === 'group-by') {
-		return this.groupBy(args.column.field);
+		groups = this._groups || [];
+		index = groups.indexOf(args.column.field);
+		if (index === -1) {
+			groups.push(args.column.field);
+		}
+		return this.groupBy(groups);
 	}
 	
 	if (args.command === 'ungroup') {
-		return this.groupBy([]);
+		groups = this._groups || [];
+		index = groups.indexOf(args.column.field);
+		if (index > -1) {
+			groups.splice(index, 1);
+		}
+		return this.groupBy(groups);
 	}
 	
 	if (args.command === 'hide') {
@@ -1292,7 +1362,7 @@ Grid.prototype.onKeyDown = function(e, args) {
 		grid = this.grid,
 		lock = grid.getEditorLock();
 
-	if (e.which === $.ui.keyCode.ENTER && $(e.target).is('textarea')) {
+	if (e.which === $.ui.keyCode.ENTER && $(e.target).is('textarea,[contenteditable]')) {
 		return;
 	}
 
@@ -1401,7 +1471,7 @@ Grid.prototype.onKeyDown = function(e, args) {
 Grid.prototype.isCellEditable = function(cell) {
 	var cols = this.grid.getColumns(),
 		col = cols[cell];
-	if (!col || col.id === "_edit_column") {
+	if (!col || col.id === "_edit_column" || col.id === "_move_column") {
 		return false;
 	}
 	var field = col.descriptor || {};
@@ -1474,30 +1544,43 @@ Grid.prototype.saveChanges = function(args, callback) {
 		return;
 	}
 
-	this._saveChangesRunning = true;
-	var res = this.__saveChanges(args, callback);
-	this._saveChangesRunning = false;
+	var that = this;
+	var grid = this.grid;
+	var lock = grid.getEditorLock();
+	var force = arguments[2];
 
-	return res;
-}
-
-Grid.prototype.__saveChanges = function(args, callback) {
-
-	var grid = this.grid,
-		lock = grid.getEditorLock();
-
-	if ((lock.isActive() && !lock.commitCurrentEdit()) || (this.editorScope && !this.editorScope.isValid())) {
+	if (!force &&
+			((lock.isActive() && !lock.commitCurrentEdit()) ||
+			 (this.editorScope && !this.editorScope.isValid()))) {
 		return false;
 	}
 
-	if (args == null) {
-		args = _.extend({ row: 0, cell: 0 }, this.grid.getActiveCell());
-		args.item = this.grid.getDataItem(args.row);
+	this._saveChangesRunning = true;
+	if (this.editorScope) {
+		this.editorScope.$emit("on:before-save", this.editorScope.record);
+	}
+	var params = arguments;
+	this.scope.waitForActions(function () {
+		that.__saveChanges.apply(that, params);
+		that._saveChangesRunning = false;
+	}, 100);
+
+	return true;
+};
+
+Grid.prototype.__saveChanges = function(args, callback) {
+
+	var that = this;
+	var grid = this.grid;
+
+	if (!args) {
+		args = _.extend({ row: 0, cell: 0 }, grid.getActiveCell());
+		args.item = grid.getDataItem(args.row);
 	}
 	
+	var ds = this.handler._dataSource;
 	var data = this.scope.dataView;
-	var ds = this.handler._dataSource,
-		records = [];
+	var records = [];
 
 	records = _.map(data.getItems(), function(rec) {
 		var res = {};
@@ -1516,14 +1599,9 @@ Grid.prototype.__saveChanges = function(args, callback) {
 		return res;
 	});
 	
-	var that = this;
-	var activeCell = grid.getActiveCell();
-
 	function focus() {
+		grid.setActiveCell(args.row, args.cell);
 		grid.focus();
-		if (activeCell) {
-			grid.setActiveCell(activeCell.row, activeCell.cell);
-		}
 		if (callback) {
 			that.handler.waitForActions(callback);
 		}
@@ -1563,18 +1641,19 @@ Grid.prototype.canSave = function() {
 
 Grid.prototype.isDirty = function(row) {
 	var grid = this.grid;
-	
+	var item;
+
 	if (row === null || row === undefined) {
 		var n = 0;
 		while (n < grid.getDataLength()) {
-			var item = grid.getDataItem(n);
+			item = grid.getDataItem(n);
 			if (item && item.$dirty) {
 				return true;
 			}
 			n ++;
 		}
 	} else {
-		var item = grid.getDataItem(row);
+		item = grid.getDataItem(row);
 		if (item && item.$dirty) {
 			return true;
 		}
@@ -1619,8 +1698,8 @@ Grid.prototype.focusInvalidCell = function(args) {
 	for(var name in error) {
 		var errors = error[name] || [];
 		if (errors.length) {
-			var name = errors[0].$name,
-				cell = grid.getColumnIndex(name);
+			name = errors[0].$name;
+			var cell = grid.getColumnIndex(name);
 			if (cell > -1) {
 				grid.setActiveCell(args.row, cell);
 				grid.editActiveCell();
@@ -1692,7 +1771,7 @@ Grid.prototype.addNewRow = function (args) {
 	if (!saved) {
 		self.focusInvalidCell(args);
 	}
-}
+};
 
 Grid.prototype.canEdit = function () {
 	var handler = this.handler || {};
@@ -1700,14 +1779,14 @@ Grid.prototype.canEdit = function () {
 	if (handler.canEdit && !handler.canEdit()) return false;
 	if (handler.isReadonly && handler.isReadonly()) return false;
 	return true;
-}
+};
 
 Grid.prototype.canAdd = function () {
 	var handler = this.handler || {};
 	if (!this.editable) return false;
 	if (handler.isReadonly && handler.isReadonly()) return false;
 	return handler.canNew && handler.canNew();
-}
+};
 
 Grid.prototype.setEditors = function(form, formScope, forEdit) {
 	var grid = this.grid,
@@ -1725,7 +1804,7 @@ Grid.prototype.setEditors = function(form, formScope, forEdit) {
 	form.prependTo(element).hide();
 	formScope.onChangeNotify = function(scope, values) {
 		var item, editor, cell = grid.getActiveCell();
-		if (cell == null || formScope.record !== scope.record) {
+		if (!cell || formScope.record !== scope.record) {
 			return;
 		}
 		item = grid.getDataItem(cell.row);
@@ -1809,7 +1888,7 @@ Grid.prototype.setEditors = function(form, formScope, forEdit) {
 					return that.addNewRow(cell);
 				});
 			}
-			return onNew.apply(self.handler, arguments);
+			return onNew.apply(that.handler, arguments);
 		};
 	}
 
@@ -1843,6 +1922,97 @@ Grid.prototype.onSort = function(event, args) {
 		return;
 	if (this.handler.onSort)
 		this.handler.onSort(event, args);
+};
+
+Grid.prototype.onBeforeMoveRows = function (event, args) {
+	var data = this.scope.dataView;
+	for (var i = 0; i < args.rows.length; i++) {
+		// no point in moving before or after itself
+		if (args.rows[i] == args.insertBefore || args.rows[i] == args.insertBefore - 1) {
+			event.stopPropagation();
+			return false;
+		}
+	}
+	return true;
+};
+
+Grid.prototype._resequence = function (items) {
+	var min = _.min(_.map(items, function (item) {
+    	return item.sequence || 0;
+    }));
+    for (var i = 0; i < items.length; i++) {
+    	var last = items[i].sequence;
+    	var next = min++;
+    	if (items[i].sequence !== next) {
+        	items[i].sequence = next;
+    		items[i].$dirty = true;
+    	}
+	}
+    return items;
+};
+
+Grid.prototype.onMoveRows = function (event, args) {
+	var grid = this.grid;
+	var dataView = this.scope.dataView;
+    var rows = args.rows;
+    var items = dataView.getItems();
+    var insertBefore = args.insertBefore;
+
+    var left = items.slice(0, insertBefore);
+    var right = items.slice(insertBefore, items.length);
+    var extractedRows = [];
+
+    rows.sort(function(a, b) { return a - b; });
+
+    var i;
+
+    for (i = 0; i < rows.length; i++) {
+    	extractedRows.push(items[rows[i]]);
+    }
+
+    rows.reverse();
+
+    for (i = 0; i < rows.length; i++) {
+    	var row = rows[i];
+    	if (row < insertBefore) {
+    		left.splice(row, 1);
+    	} else {
+    		right.splice(row - insertBefore, 1);
+    	}
+    }
+
+    items = left.concat(extractedRows.concat(right));
+
+    var selectedRows = [];
+    for (i = 0; i < rows.length; i++) {
+    	selectedRows.push(left.length + i);
+	}
+
+    // resequence
+    this._resequence(items);
+
+    function resetSelection() {
+    	grid.setActiveCell(selectedRows[0], 0);
+    	grid.setSelectedRows(selectedRows);
+    }
+
+    dataView.beginUpdate();
+	dataView.setItems(items);
+	dataView.endUpdate();
+	resetSelection();
+    grid.render();
+
+    var that = this;
+    this.scope.$timeout(function () {
+    	dataView.$isResequencing = true;
+    	var saved = that.saveChanges(null, function() {
+    		delete dataView.$isResequencing;
+    		resetSelection();
+    	}, true);
+    	if (saved === false) {
+    		delete dataView.$isResequencing;
+    	}
+    });
 };
 
 Grid.prototype.onButtonClick = function(event, args) {
@@ -1881,7 +2051,7 @@ Grid.prototype.onButtonClick = function(event, args) {
 		}
 		field.handler.scope.getContext = function() {
 			var context = _.extend({
-				_model: model,
+				_model: model
 			}, record);
 			if (handlerScope.field && handlerScope.field.target) {
 				context._parent = handlerScope.getContext();
@@ -1918,7 +2088,7 @@ Grid.prototype.onItemClick = function(event, args) {
 	}
 
 	// checkbox column
-	if (this.scope.selector && args.cell == 0) {
+	if (this.scope.selector && args.cell === 0) {
 		return false;
 	}
 
@@ -2040,6 +2210,7 @@ Grid.prototype.groupBy = function(names) {
 		};
 	}, this);
 	
+	this._groups = all;
 	data.setGrouping(grouping);
 };
 
@@ -2056,7 +2227,7 @@ function EditIconColumn(options) {
     function init(grid) {
     	_grid = grid;
     	_handler.subscribe(grid.onClick, handleClick);
-    };
+    }
     
     function handleClick(e, args) {
     	if (_grid.getColumns()[args.cell].id !==  '_edit_column' || !$(e.target).is("i")) {
@@ -2101,8 +2272,8 @@ ui.directive('uiSlickEditors', function() {
 		restrict: 'EA',
 		replace: true,
 		controller: ['$scope', '$element', 'DataSource', 'ViewService', function($scope, $element, DataSource, ViewService) {
-			ViewCtrl($scope, DataSource, ViewService);
-			FormViewCtrl.call(this, $scope, $element);
+			ui.ViewCtrl($scope, DataSource, ViewService);
+			ui.FormViewCtrl.call(this, $scope, $element);
 			$scope.setEditable();
 			$scope.onShow = function(viewPromise) {
 				
@@ -2147,15 +2318,16 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 			var field = _fields[item.name] || item,
 				type = types[field.type];
 
-			// force text widget for html
+			// force lite html widget
 			if (item.widget && item.widget.toLowerCase() === 'html') {
-				item.widget = 'Text';
+				item.lite = true;
 			}
 
 			if (!type && !forEdit) {
-				return item.forEdit = false;
+				item.forEdit = false;
+				return;
 			}
-			
+
 			var params = _.extend({}, item, { showTitle: false });
 			if (type) {
 				params.widget = type;
@@ -2179,7 +2351,7 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 		};
 
 		return ViewService.compile('<div ui-slick-editors></div>')(scope);
-	};
+	}
 	
 	return {
 		restrict: 'EA',
@@ -2246,7 +2418,7 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 					formScope.grid = grid;
 					grid.setEditors(form, formScope, forEdit);
 				}
-			};
+			}
 
 			element.addClass('slickgrid').hide();
 			var unwatch = scope.$watch("view.loaded", function(viewLoaded) {
@@ -2255,6 +2427,16 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 				}
 				unwatch();
 				schema = scope.view;
+
+				var field = handler.field || {};
+				if (field.canMove !== undefined) {
+					schema.canMove = field.canMove;
+				}
+				if (field.editable !== undefined) {
+					schema.editable = field.editable;
+				}
+				schema.orderBy = field.orderBy || schema.orderBy;
+
 				element.show();
 				doInit();
 			});

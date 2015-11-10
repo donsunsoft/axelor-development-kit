@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -136,4 +138,20 @@ ui.formInput('Password', 'String', {
 	template_editable: '<input type="password">'
 });
 
-})(this);
+ui.directive('uiTextareaAutoSize', function () {
+
+	return function (scope, element, attrs) {
+
+		if (!element.is('textarea')) return;
+
+		function resize() {
+			var diff = element.outerHeight() - element.innerHeight();
+			element.css('height', 'auto').css('height', element[0].scrollHeight + diff);
+		}
+
+		element.on('focus keyup input', resize);
+		setTimeout(resize);
+	};
+});
+
+})();

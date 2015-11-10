@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -20,7 +20,7 @@ package com.axelor.tools.x2j;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.codehaus.groovy.runtime.StringGroovyMethods;
+import com.axelor.common.StringUtils;
 
 public class Utils {
 
@@ -34,7 +34,7 @@ public class Utils {
 		if (code == null || code.trim().length() == 0) {
 			return "";
 		}
-		String text = StringGroovyMethods.stripIndent(code.replaceAll("    ", "\t"));
+		String text = StringUtils.stripIndent(code.replaceAll("    ", "\t"));
 		text = text.trim().replaceAll("\n", joinWith).trim();
 		return text;
 	}
@@ -48,10 +48,16 @@ public class Utils {
 	}
 
 	public static String firstUpper(String string) {
+		if (string.length() > 1 && Character.isUpperCase(string.charAt(1))) {
+			return string;
+		}
 		return string.substring(0, 1).toUpperCase() + string.substring(1);
 	}
 
 	public static String firstLower(String string) {
+		if (string.length() > 1 && Character.isUpperCase(string.charAt(1))) {
+			return string;
+		}
 		return string.substring(0, 1).toLowerCase() + string.substring(1);
 	}
 }

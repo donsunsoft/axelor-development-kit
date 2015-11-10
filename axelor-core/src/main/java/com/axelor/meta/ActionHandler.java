@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -28,15 +28,16 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
 import javax.persistence.Query;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.axelor.common.StringUtils;
 import com.axelor.db.JPA;
 import com.axelor.db.Model;
 import com.axelor.db.QueryBinder;
+import com.axelor.inject.Beans;
 import com.axelor.meta.schema.actions.Action;
 import com.axelor.meta.schema.actions.ActionGroup;
 import com.axelor.meta.schema.actions.ActionMethod;
@@ -44,7 +45,7 @@ import com.axelor.rpc.ActionRequest;
 import com.axelor.rpc.ActionResponse;
 import com.axelor.rpc.Context;
 import com.axelor.rpc.Resource;
-import com.axelor.script.GroovyScriptHelper;
+import com.axelor.script.CompositeScriptHelper;
 import com.axelor.script.ScriptBindings;
 import com.axelor.script.ScriptHelper;
 import com.axelor.text.Templates;
@@ -52,16 +53,15 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
+import com.google.common.escape.Escaper;
+import com.google.common.escape.Escapers;
 import com.google.common.io.CharStreams;
-import com.google.inject.Injector;
 import com.google.inject.servlet.RequestScoped;
 
 @RequestScoped
 public class ActionHandler {
 
 	private final Logger log = LoggerFactory.getLogger(ActionHandler.class);
-
-	private Injector injector;
 
 	private ActionRequest request;
 
@@ -73,35 +73,17 @@ public class ActionHandler {
 	
 	private Pattern pattern = Pattern.compile("^(select\\[\\]|select|action|call|eval):\\s*(.*)");
 	
-	private ActionHandler(Injector injector, ActionRequest request) {
+	public ActionHandler(ActionRequest request) {
 
-		Context context = request.getContext();
-		if (context == null) {
-			log.debug("null context for action: {}", request.getAction());
-			context = Context.create(null, request.getBeanClass());
-		}
+		final Context context = request.getContext();
 
-		this.injector = injector;
 		this.request = request;
 
 		this.context = context;
 
-		this.scriptHelper = new GroovyScriptHelper(this.context);
+		this.scriptHelper = new CompositeScriptHelper(this.context);
 		this.bindings = this.scriptHelper.getBindings();
 		this.bindings.put("__me__", this);
-	}
-
-	@Inject
-	ActionHandler(Injector injector) {
-		this.injector = injector;
-	}
-	
-	public ActionHandler forRequest(ActionRequest request) {
-		return new ActionHandler(injector, request);
-	}
-	
-	public Injector getInjector() {
-		return injector;
 	}
 
 	public Context getContext() {
@@ -124,12 +106,16 @@ public class ActionHandler {
 	 */
 	public Object evaluate(String expression) {
 
-		if (Strings.isNullOrEmpty(expression)) {
+		if (StringUtils.isEmpty(expression)) {
 			return null;
 		}
 
+		String expr = expression.trim();
+		if (expr.startsWith("#{") && expr.endsWith("}")) {
+			return handleScript(expr);
+		}
+
 		String kind = null;
-		String expr = expression;
 		Matcher matcher = pattern.matcher(expression);
 
 		if (matcher.matches()) {
@@ -140,7 +126,7 @@ public class ActionHandler {
 		}
 
 		if ("eval".equals(kind)) {
-			return handleGroovy(expr);
+			return handleScript(expr);
 		}
 
 		if ("action".equals(kind)) {
@@ -165,14 +151,12 @@ public class ActionHandler {
 	public Object call(String className, String method) {
 		ActionResponse response = new ActionResponse();
 		try {
-			Class<?> klass = Class.forName(className);
-			Method m = klass.getMethod(method,
-					ActionRequest.class,
-					ActionResponse.class);
-			Object obj = injector.getInstance(klass);
+			final Class<?> klass = Class.forName(className);
+			final Method m = klass.getMethod(method, ActionRequest.class, ActionResponse.class);
+			final Object obj = Beans.get(klass);
 			m.invoke(obj, new Object[] { request, response });
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 			response.setException(e);
 		}
 		return response;
@@ -188,8 +172,8 @@ public class ActionHandler {
 		}
 
 		try {
-			Class<?> klass = Class.forName(className);
-			Object object = injector.getInstance(klass);
+			final Class<?> klass = Class.forName(className);
+			final Object object = Beans.get(klass);
 			return scriptHelper.call(object, methodCall);
 		} catch (Exception e) {
 			throw new IllegalArgumentException(e);
@@ -230,11 +214,18 @@ public class ActionHandler {
 		return null;
 	}
 
+	public Object selectOne(String query) {
+		return selectOne(query, new Object[]{});
+	}
+
+	public Object selectAll(String query) {
+		return selectAll(query, new Object[]{});
+	}
+
 	@SuppressWarnings("all")
 	public Object search(Class<?> entityClass, String filter, Map params) {
-		filter = makeMethodCall("filter", filter);
-		filter = String.format("__repo__.of(%s.class).all().%s", entityClass.getName(), filter);
-		com.axelor.db.Query q = (com.axelor.db.Query) handleGroovy(filter);
+		filter = makeMethodCall(String.format("__repo__(%s).all().filter", entityClass.getSimpleName()), filter);
+		com.axelor.db.Query q = (com.axelor.db.Query) handleScript(filter);
 
 		q = q.bind(bindings);
 		q = q.bind(params);
@@ -242,29 +233,31 @@ public class ActionHandler {
 		return q.fetchOne();
 	}
 
+	private static final Escaper STRING_ESCAPER = Escapers.builder().addEscape('"', "\\\"").build();
+
 	private String makeMethodCall(String method, String expression) {
 		expression = expression.trim();
 		// check if expression is parameterized
 		if (!expression.startsWith("(")) {
 			if (!expression.matches("('|\")")) {
-				expression = "\"\"\"" + expression + "\"\"\"";
+				expression = "\"" + STRING_ESCAPER.escape(expression) + "\"";
 			}
 			expression = "(" + expression + ")";
 		}
-		return method + expression;
+		return "#{" + method + expression + "}";
 	}
 
 	private Object handleSelectOne(String expression) {
 		expression = makeMethodCall("__me__.selectOne", expression);
-		return handleGroovy(expression);
+		return handleScript(expression);
 	}
 
 	private Object handleSelectAll(String expression) {
 		expression = makeMethodCall("__me__.selectAll", expression);
-		return handleGroovy(expression);
+		return handleScript(expression);
 	}
 
-	private Object handleGroovy(String expression) {
+	private Object handleScript(String expression) {
 		return scriptHelper.eval(expression);
 	}
 

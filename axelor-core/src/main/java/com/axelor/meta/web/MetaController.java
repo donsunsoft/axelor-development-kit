@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -61,7 +61,7 @@ public class MetaController {
 
 	@Inject
 	private ModuleManager moduleManager;
-	
+
 	@Inject
 	private MetaTranslationRepository translations;
 
@@ -147,17 +147,17 @@ public class MetaController {
 			response.setException(e);
 		}
 	}
-	
+
 	private static final String DEFAULT_EXPORT_DIR = "{java.io.tmpdir}/axelor/data-export";
 	private static final String EXPORT_DIR = AppSettings.get().getPath("data.export.dir", DEFAULT_EXPORT_DIR);
-	
+
 	private void exportI18n(String module, URL file) throws IOException {
 
 		String name = Paths.get(file.getFile()).getFileName().toString();
 		if (!name.startsWith("messages_")) {
 			return;
 		}
-		
+
 		Path path = Paths.get(EXPORT_DIR, "i18n");
 		String lang = name.substring(9, name.length() - 4);
 		Path target = path.resolve(Paths.get(module, "src/main/resources/i18n", name));
@@ -171,19 +171,19 @@ public class MetaController {
 				if (header.length != values.length) {
 					continue;
 				}
-				
+
 				final Map<String, String> map = new HashMap<>();
 				for (int i = 0; i < header.length; i++) {
 					map.put(header[i], values[i]);
 				}
-				
+
 				String key = map.get("key");
 				String value = map.get("value");
-				
+
 				if (StringUtils.isBlank(key)) {
 					continue;
 				}
-				
+
 				MetaTranslation tr = translations.findByKey(key, lang);
 				if (tr != null) {
 					value = tr.getMessage();
@@ -196,7 +196,7 @@ public class MetaController {
 		} finally {
 			reader.close();
 		}
-		
+
 		Files.createParentDirs(target.toFile());
 
 		CSVWriter writer = new CSVWriter(new FileWriter(target.toFile()));

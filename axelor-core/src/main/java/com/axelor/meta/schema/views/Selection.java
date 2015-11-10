@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -23,6 +23,7 @@ import java.util.Map;
 import javax.xml.bind.annotation.XmlAnyAttribute;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.XmlValue;
 import javax.xml.namespace.QName;
@@ -76,8 +77,21 @@ public class Selection {
 		@XmlValue
 		private String title;
 
+		@XmlAttribute
+		private String icon;
+
+		@XmlAttribute
+		private Integer order;
+
+		@XmlAttribute
+		private Boolean hidden;
+
+		@JsonIgnore
 		@XmlAnyAttribute
-		private Map<QName, String> data;
+		private Map<QName, String> dataAttributes;
+
+		@XmlTransient
+		private Map<String, Object> data;
 
 		public String getValue() {
 			return value;
@@ -101,13 +115,41 @@ public class Selection {
 			this.title = title;
 		}
 
-		public Map<QName, String> getData() {
+		public String getIcon() {
+			return icon;
+		}
+
+		public void setIcon(String icon) {
+			this.icon = icon;
+		}
+
+		public Integer getOrder() {
+			return order;
+		}
+
+		public void setOrder(Integer order) {
+			this.order = order;
+		}
+
+		public Boolean getHidden() {
+			return hidden;
+		}
+
+		public void setHidden(Boolean hidden) {
+			this.hidden = hidden;
+		}
+
+		public Map<QName, String> getDataAttributes() {
+			return dataAttributes;
+		}
+
+		@JsonGetter
+		public Map<String, Object> getData() {
 			return data;
 		}
-		
-		public void setData(Map<QName, String> data) {
+
+		public void setData(Map<String, Object> data) {
 			this.data = data;
 		}
 	}
-
 }

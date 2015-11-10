@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -55,20 +55,6 @@ public interface ScriptHelper {
 	 * @return true or false
 	 */
 	boolean test(String expr);
-
-	/**
-	 * Call a method on the given object with the provided arguments.
-	 *
-	 * @param obj
-	 *            the object on which method should be called
-	 * @param method
-	 *            the name of the method
-	 * @param args
-	 *            method arguments
-	 *
-	 * @return return value of the method
-	 */
-	Object call(Object obj, String method, Object... args);
 
 	/**
 	 * Call a method on the given object.

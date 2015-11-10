@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,16 +15,22 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 var popoverElem = null;
 var popoverTimer = null;
 
 function canDisplayPopover(scope, details) {
-	var mode = __appSettings['application.mode'];
-	var tech = __appSettings['user.technical'];
+	var mode = axelor.config['application.mode'];
+	var tech = axelor.config['user.technical'];
 	
+	if (axelor.device.mobile) {
+		return false;
+	}
+
 	if(mode == 'prod' && !tech) {
 		return details ? false : scope.field && scope.field.help;
 	}
@@ -34,8 +40,8 @@ function canDisplayPopover(scope, details) {
 
 function makePopover(scope, element, callback, placement) {
 	
-	var mode = __appSettings['application.mode'];
-	var tech = __appSettings['user.technical'];
+	var mode = axelor.config['application.mode'];
+	var tech = axelor.config['user.technical'];
 	var doc = $(document);
 	
 	var table = null;
@@ -66,7 +72,7 @@ function makePopover(scope, element, callback, placement) {
 		placement: function() {
 			if (placement) return placement;
 			var coord = $(element.get(0)).offset(),
-				viewport = {height: innerHeight, width: window.innerWidth};
+				viewport = { height: window.innerHeight, width: window.innerWidth };
 			if(viewport.height < (coord.top + 100))
 				return 'top';
 			if(coord.left > (viewport.width / 2))
@@ -219,6 +225,8 @@ ui.directive('uiHelpPopover', function() {
 		}
 
 		var value = scope.$eval('$$original.' + field.name);
+		var length;
+
 		if (value && /-one$/.test(field.serverType)) {
 			value = _.compact([value.id, value[field.targetName]]).join(',');
 			value = '(' + value + ')';
@@ -227,7 +235,7 @@ ui.directive('uiHelpPopover', function() {
 			value = _.str.repeat('*', value.length);
 		}
 		if (value && /^(string|image|binary)$/.test(field.type)) {
-			var length = value.length;
+			length = value.length;
 			value = _.first(value, 50);
 			if (length > 50) {
 				value.push('...');
@@ -235,7 +243,7 @@ ui.directive('uiHelpPopover', function() {
 			value = value.join('');
 		}
 		if (value && /(panel-related|one-to-many|many-to-many)/.test(field.serverType)) {
-			var length = value.length;
+			length = value.length;
 			value = _.first(value, 5);
 			value = _.map(value, function(v){
 				return v.id;
@@ -257,7 +265,7 @@ ui.directive('uiHelpPopover', function() {
 		if(canDisplayPopover(scope, false)) {
 			makePopover(scope, element, getHelp);
 		}
-	};
+	}
 
 	return function(scope, element, attrs) {
 		var field = scope.field;
@@ -378,6 +386,10 @@ ui.formItem('Button', {
 			container: 'body'
 		});
 
+		element.on("$destroy", function () {
+			element.tooltip("destroy");
+		});
+
 		element.on("click", function(e) {
 
 			if (scope.isReadonlyExclusive() || element.hasClass('disabled')) {
@@ -432,9 +444,34 @@ ui.formItem('Button', {
 			element.children('.btn-text').html(title);
 		});
 	},
-	template: '<a href="" class="btn">'+
+	template: '<a href="" class="btn btn-success">'+
 		'<span class="btn-text" ng-transclude></span>'+
 	'</a>'
+});
+
+ui.formItem('InfoButton', 'Button', {
+	link: function (scope, element, attrs) {
+		this._super.apply(this, arguments);
+		var field = scope.field || {};
+		scope.title = field.title;
+		scope.$watch('attr("title")', function(title, old) {
+			if (!title || title === old) return;
+			scope.title = title;
+		});
+		Object.defineProperty(scope, 'value', {
+			get: function () {
+				return scope.record ? scope.record[field.name] : "";
+			}
+		});
+	},
+	replace: true,
+	template:
+		"<div class='btn info-button'>" +
+			"<div class='info-button-data'>" +
+				"<span class='info-button-value'>{{value}}</span>" +
+				"<small class='info-button-title'>{{title}}</small>" +
+			"</div>" +
+		"</div>"
 });
 
 ui.formItem('ToolButton', 'Button', {
@@ -460,4 +497,4 @@ ui.formItem('ToolButton', 'Button', {
 	template: '<button class="btn" ui-show="!isHidden()" name="{{btn.name}}" ui-actions ui-widget-states>{{title}}</button>'
 });
 
-})(this);
+})();

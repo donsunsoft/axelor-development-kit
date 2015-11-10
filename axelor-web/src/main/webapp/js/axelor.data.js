@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function($, undefined) {
+(function() {
+
+	"use strict";
 
 	var extend = angular.extend,
 		isArray = angular.isArray,
@@ -61,7 +63,7 @@
 			};
 			
 			this._listeners = {};
-		};
+		}
 		
 		DataSource.DEFAULT_LIMIT = 40;
 
@@ -69,6 +71,8 @@
 
 			constructor: DataSource,
 			
+			_http: $http,
+
 			_request: function(action, id) {
 				var url = 'ws/rest/' + this._model;
 				if (id) url += '/' + id;
@@ -80,6 +84,11 @@
 					},
 					post: function(data, config) {
 						return $http.post(url, data, config);
+					},
+					send: function (config) {
+						return $http(_.extend({}, config, {
+							url: url
+						}));
 					}
 				};
 			},
@@ -221,11 +230,11 @@
 					store: true
 				}, options);
 				
-				var limit = opts.limit == undefined ? this._page.limit : opts.limit;
-				var offset = opts.offset == undefined ? this._page.from : opts.offset;
+				var limit = opts.limit === undefined ? this._page.limit : opts.limit;
+				var offset = opts.offset === undefined ? this._page.from : opts.offset;
 				var domain = opts.domain === undefined ? (this._lastDomain || this._domain) : opts.domain;
-				var context = opts.context == undefined ? (this._lastContext || this._context) : opts.context;
-				var archived = opts.archived == undefined ? this._showArchived : opts.archived;
+				var context = opts.context === undefined ? (this._lastContext || this._context) : opts.context;
+				var archived = opts.archived === undefined ? this._showArchived : opts.archived;
 				
 				var fields = _.isEmpty(opts.fields) ? null : opts.fields;
 				var filter = opts.filter || this._filter;
@@ -268,14 +277,20 @@
 
 				promise = promise.then(function(response){
 					var res = response.data;
+					var length = (res.data||[]).length;
 					res.offset = offset;
-					res.data = res.data || [];
+					res.data = _.unique(res.data, function (a) { return a.id; });
+
 					if (opts.store) {
 						that._accept(res);
 						page.index = -1;
 					} else {
 						records = res.data || [];
 						page = that._pageInfo(res);
+					}
+
+					if (length !== page.size) {
+						page.total -= (length - page.size);
 					}
 				});
 				promise.success = function(fn){
@@ -343,6 +358,119 @@
 				return promise;
 			},
 
+			// find followers of the given record
+			followers: function (id) {
+				var promise = this._request('followers', id).get();
+				promise.success = function(fn) {
+					promise.then(function(res) {
+						fn(res.data);
+					});
+					return promise;
+				};
+				promise.error = function(fn) {
+					promise.then(null, fn);
+					return promise;
+				};
+				return promise;
+			},
+
+			// find messages for the given record
+			messages: function (options) {
+
+				var opts = _.extend({}, options);
+				var promise = this._request('messages').send({
+					method: 'GET',
+					params: opts,
+					silent: opts.count ? true : undefined,
+					transformRequest: opts.count ? [] : undefined
+				});
+
+				promise.success = function(fn) {
+					promise.then(function(response) {
+						fn(response.data);
+					});
+					return promise;
+				};
+				promise.error = function(fn) {
+					promise.then(null, fn);
+					return promise;
+				};
+				return promise;
+			},
+
+			messageCount: function (options) {
+				var opts = _.extend({}, options, {
+					count: true
+				});
+				return this.messages(opts);
+			},
+
+			messagePost: function (id, text, options) {
+
+				var opts = _.extend({}, options);
+				var data = _.extend({
+					body : text,
+					type: opts.type,
+					parent: opts.parent,
+					files: opts.files,
+					recipients: opts.recipients
+				});
+
+				var promise = this._request('message', id).post({
+					data: data
+				});
+
+				promise.success = function(fn) {
+					promise.then(function(response){
+						fn(response.data);
+					});
+					return promise;
+				};
+				promise.error = function(fn) {
+					promise.then(null, fn);
+					return promise;
+				};
+				return promise;
+			},
+
+			messageFollow: function (id, options) {
+				var opts = _.extend({}, options);
+				var promise = this._request('follow', id).post({
+					data: opts.email
+				});
+
+				promise.success = function(fn) {
+					promise.then(function(response){
+						fn(response.data);
+					});
+					return promise;
+				};
+				promise.error = function(fn) {
+					promise.then(null, fn);
+					return promise;
+				};
+				return promise;
+			},
+
+			messageUnfollow: function (id, options) {
+				var opts = _.extend({}, options);
+				var promise = this._request('unfollow', id).post({
+					records: opts.records
+				});
+
+				promise.success = function(fn) {
+					promise.then(function(response){
+						fn(response.data);
+					});
+					return promise;
+				};
+				promise.error = function(fn) {
+					promise.then(null, fn);
+					return promise;
+				};
+				return promise;
+			},
+
 			isPermitted: function(action, values) {
 
 				var data = _.extend({}, {
@@ -390,7 +518,7 @@
 					promise = deferred.promise;
 				
 				var indicator = $injector.get('httpIndicator');
-				promise = indicator(promise);
+				promise = promise.then(indicator.response, indicator.responseError);
 
 				var xhr = new XMLHttpRequest();
 				var data = new FormData();
@@ -477,6 +605,7 @@
 					var res = response.data;
 					res.data = res.data[0];
 					record = that._accept(res);
+					that.trigger('on:save', [values]);
 				});
 
 				promise.success = function(fn) {
@@ -529,6 +658,7 @@
 					}
 
 					that.trigger('change', records, page);
+					that.trigger('on:save', items);
 				});
 				
 				promise.success = function(fn) {
@@ -609,7 +739,7 @@
 							index = i;
 							break;
 						}
-					};
+					}
 					if (index > -1) {
 						records.splice(index, 1);
 						page.total -= 1;
@@ -617,6 +747,7 @@
 					}
 					
 					that.trigger('change', records, page);
+					that.trigger('on:remove', [record]);
 				});
 
 				promise.success = function(fn) {
@@ -665,6 +796,7 @@
 						remove(record.id);
 					});
 					that.trigger('change', records, page);
+					that.trigger('on:remove', selection);
 				});
 
 				promise.success = function(fn) {
@@ -831,7 +963,7 @@
 						if (records[i].id === data.id) {
 							index = i;
 							break;
-						};
+						}
 					}
 					
 					if (index > -1) {
@@ -857,9 +989,7 @@
 			},
 			
 			attachment: function(id, options) {
-				if (options == null)
-					options = {};
-
+				options = options || {};
 				var params = {
 					fields: options.fields
 				};
@@ -966,8 +1096,8 @@
 
 		function create(model, options) {
 			return new DataSource(model, options);
-		};
+		}
 
 	}]);
 
-})(jQuery);
+})();

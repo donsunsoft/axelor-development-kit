@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2012-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -148,34 +148,45 @@
 	padding: 14px;
 }
 
-.dashboard > .dashlet-container {
-	padding: 0;
+
+.dashboard,
+.dashboard .dashlet {
+	box-sizing: border-box;
+}
+
+.dashboard .ui-sortable-placeholder {
+	border: 1px dashed #cecece !important;
+	visibility: visible !important;
+	background: #e7eaec !important;
+}
+.dashboard .ui-sortable-helper {
+	box-shadow: 0 5px 10px rgba(0,0,0,.2);
 }
 
 .dashboard .dashlet {
-	border: 1px solid #d4d4d4;
-	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.065);
-	height: 300px;
+	background-color: #fff;
 }
 
-.bar-layout .dashboard {
-	height: 300px;
+.dashboard .dashlet-header {
+	border-top: 4px solid #e7e7e7;
+	padding: 11px 15px 14px;
+	overflow: hidden;
+	cursor: move;
 }
 
 .bar-layout .dashlet {
 	height: 100%;
 }
-
-.dashboard .dashlet-header {
-	background-color: #f5f5f5;
-	border-bottom: 1px solid #d4d4d4;
-
-	padding: 6px 10px;
-	overflow: hidden;
+.bar-layout .dashlet-header {
+	cursor: default;
+}
+.bar-layout .panel .dashboard {
+	margin-bottom: 0;
 }
 
 .dashboard .dashlet-title {
-	font-size: 16px;
+	font-size: 14px;
+	font-weight: 600;
 	max-width: 60%;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -184,11 +195,13 @@
 
 .dashboard .dashlet-body {
 	padding: 4px;
-	height: calc(100% - 32px);
+	border-top: 1px solid #e7e7e7;
+	height: 250px;
+	overflow: auto;
 }
 
 .dashboard .dashlet-body > * {
-	height: calc(100% - 9px);
+	height: calc(100% - 2px);
 }
 
 .dashboard .dashlet-body .slickgrid {
@@ -222,13 +235,14 @@
 .dashlet .chart-controls .panel {
 	border: 0;
 	box-shadow: none;
+	margin: 0;
 }
 .dashlet .chart-controls .panel-body {
 	padding: 4px;
 }
 
 .dashboard .dashlet {
-	margin: 4px !important;
+	margin: 10px !important;
 }
 
 .form-item .dashboard {
@@ -246,62 +260,62 @@
 }
 
 .dashlet-cs12 {
-	width: calc(100% - 10px);
+	width: calc(100% - 24px);
 }
 
 .dashlet-cs11 {
-	width: calc(91.666666667% - 10px);
+	width: calc(91.666666667% - 24px);
 }
 
 .dashlet-cs10 {
-	width: calc(83.333333333% - 10px);
+	width: calc(83.333333333% - 24px);
 }
 
 .dashlet-cs9 {
-	width: calc(75% - 10px);
+	width: calc(75% - 24px);
 }
 
 .dashlet-cs8 {
-	width: calc(66.666666667% - 10px);
+	width: calc(66.666666667% - 24px);
 }
 
 .dashlet-cs7 {
-	width: calc(58.333333333% - 10px);
+	width: calc(58.333333333% - 24px);
 }
 
 .dashlet-cs6 {
-	width: calc(50% - 10px);
+	width: calc(50% - 24px);
 }
 
 .dashlet-cs5 {
-	width: calc(41.666666667% - 10px);
+	width: calc(41.666666667% - 24px);
 }
 
 .dashlet-cs4 {
-	width: calc(33.333333333% - 10px);
+	width: calc(33.333333333% - 24px);
 }
 
 .dashlet-cs3 {
-	width: calc(25% - 10px);
+	width: calc(25% - 24px);
 }
 
 .dashlet-cs2 {
-	width: calc(16.666666667% - 10px);
+	width: calc(16.666666667% - 24px);
 }
 
 .dashlet-cs1 {
-	width: calc(8.333333333% - 10px);
+	width: calc(8.333333333% - 24px);
 }
 
 @media (max-width: 768px) {
 	[class*="dashlet-cs"] {
-		width: calc(100% - 10px);
+		width: calc(100% - 24px);
 	}
 }
 
 .chart-controls .span6 {
-	width: calc(50% - 4px) !important;
-	margin: 0 4px !important;
+	width: calc(50% - 12px) !important;
+	margin: 0 12px !important;
 	float: left !important;
 }
 
@@ -311,4 +325,35 @@
 
 .chart-controls .span6:last-child {
 	margin-right: 0 !important;
+}
+
+.report-box {
+	position: relative;
+}
+
+.report-box .dashlet-buttons {
+	display: none;
+}
+
+.report-box .dashlet-body {
+	height: 60px;
+	padding: 15px 20px 20px 20px;
+	overflow: hidden;
+}
+
+.report-box .dashlet-body h1 {
+	margin: 0;
+	font-size: 30px;
+	font-weight: 100;
+}
+
+.report-box .report-tags {
+	position: absolute;
+    top: 12px;
+    right: 10px;
+}
+
+.report-table tfoot td {
+	border-top: 1px solid #ccc;
+	font-weight: 600;
 }

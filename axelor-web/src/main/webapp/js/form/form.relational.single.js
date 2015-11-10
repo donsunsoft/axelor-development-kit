@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module("axelor.ui");
 
@@ -40,10 +42,20 @@ function ManyToOneCtrl($scope, $element, DataSource, ViewService) {
 		embedded = ViewService.compile(embedded)($scope);
 		embedded.hide();
 
-		var colspan = $element.parents("form.dynamic-form:first").attr('x-cols') || 4,
-			cell = $('<td class="form-item"></td>').attr('colspan', colspan).append(embedded),
-			row = $('<tr></tr>').append(cell);
+		var cell, row;
 
+		// if panel form
+		if ($element.parent().is("div.form-item")) {
+			cell = $("<div></div>").addClass("span12 form-item").append(embedded);
+			row = $("<div></div>").addClass("row-fluid").append(cell);
+			row.insertAfter($element.parents(".row-fluid:first"));
+			return embedded;
+		}
+
+		var colspan = $element.parents("form.dynamic-form:first").attr('x-cols') || 4;
+
+		cell = $('<td class="form-item"></td>').attr('colspan', colspan).append(embedded);
+		row = $('<tr></tr>').append(cell);
 		row.insertAfter($element.parents("tr:first"));
 
 		return embedded;
@@ -70,7 +82,7 @@ function ManyToOneCtrl($scope, $element, DataSource, ViewService) {
 					return $(this).attr('x-path').replace(path+'.','');
 				}).get();
 		relatives = _.unique(relatives);
-		missing = _.filter(relatives, function (name) {
+		var missing = _.filter(relatives, function (name) {
 			return !value || value[name] === undefined;
 		});
 		_.each(relatives, function(name) {
@@ -201,7 +213,7 @@ ui.directive('uiCanSuggest', function () {
 	};
 });
 
-var m2oTemplateReadonly = '<a href="" ng-show="text" ng-click="onEdit()">{{text}}</a>'
+var m2oTemplateReadonly = '<a href="" ng-show="text" ng-click="onEdit()">{{text}}</a>';
 var m2oTemplateReadonlyPlain = '<span class="display-text" ng-show="text">{{text}}</span>';
 
 var m2oTemplateEditable = '' +
@@ -564,7 +576,7 @@ ui.formInput('InlineManyToOne', 'ManyToOne', {
 		}
 		scope.canShowEditor = function () {
 			return (scope.record || {}).id > 0 || !!scope.getValue();
-		}
+		};
 		template =
 			"<div class='m2o-editor-switcher'>" +
 			"<div ng-show='!canShowEditor()' class='form-item-container'>"+ m2oTemplateEditable +"</div>" +
@@ -580,10 +592,21 @@ ui.formInput('SuggestBox', 'ManyToOne', {
 
 	showSelectionOn: "click",
 
+	link_editable: function(scope, element, attrs, model) {
+		this._super.apply(this, arguments);
+		var field = scope.field;
+		if (field.canNew === undefined && field.create) {
+			field.canNew = true;
+		}
+		if (field.create === undefined && field.canNew) {
+			field.create = true;
+		}
+	},
 	template_editable:
 	'<span class="picker-input">'+
 		'<input type="text" autocomplete="off" ui-can-suggest>'+
 		'<span class="picker-icons">'+
+			'<i class="fa fa-times" ng-show="text" ng-click="handleClear()"></i>'+
 			'<i class="fa fa-caret-down" ng-click="showSelection()"></i>'+
 		'</span>'+
    '</span>'
@@ -763,4 +786,4 @@ ui.formInput('RefItem', 'ManyToOne', {
 	}
 });
 
-}).call(this);
+})();

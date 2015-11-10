@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,10 +15,18 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+(function() {
+
+"use strict";
+
+var ui = angular.module('axelor.ui');
+
+ui.controller('SearchViewCtrl', SearchViewCtrl);
+
 SearchViewCtrl.$inject = ['$scope', '$element', '$http', 'DataSource', 'ViewService', 'MenuService'];
 function SearchViewCtrl($scope, $element, $http, DataSource, ViewService, MenuService) {
 	
-	var view = $scope._views['search'] || {};
+	var view = $scope._views.search || {};
 	
 	$scope._dataSource = DataSource.create('multi-search');
 	
@@ -44,7 +52,7 @@ function SearchViewCtrl($scope, $element, $http, DataSource, ViewService, MenuSe
 	}
 	
 	$scope.show = function(viewPromise) {
-		if (viewPromise == null) {
+		if (!viewPromise) {
 			viewPromise = $scope.loadView('search', view.name);
 			viewPromise.success(function(fields, schema){
 				$scope.initView(schema);
@@ -210,8 +218,9 @@ function SearchViewCtrl($scope, $element, $http, DataSource, ViewService, MenuSe
 	$scope.doAction = function() {
 		
 		var action = scopes.toolbar.getMenuAction();
-		if (action == null)
+		if (!action) {
 			return;
+		}
 	
 		var grid = scopes.grid,
 			index = _.first(grid.selection),
@@ -231,8 +240,8 @@ function SearchViewCtrl($scope, $element, $http, DataSource, ViewService, MenuSe
 			}
 			
 			var view = result.data[0].view;
-			
-			tab = view;
+			var tab = view;
+
 			tab.action = _.uniqueId('$act');
 			tab.viewType = 'form';
 			
@@ -245,10 +254,12 @@ function SearchViewCtrl($scope, $element, $http, DataSource, ViewService, MenuSe
 	};
 }
 
+ui.controller('SearchFormCtrl', SearchFormCtrl);
+
 SearchFormCtrl.$inject = ['$scope', '$element', 'ViewService'];
 function SearchFormCtrl($scope, $element, ViewService) {
 	
-	FormViewCtrl.call(this, $scope, $element);
+	ui.FormViewCtrl.call(this, $scope, $element);
 	$scope._register('form', $scope);
 	$scope.setEditable();
 	
@@ -256,13 +267,13 @@ function SearchFormCtrl($scope, $element, ViewService) {
 	$scope.defaultValues = {};
 	
 	$scope.$watch('_searchView', function(schema) {
-		if (schema == null) return;
+		if (!schema) return;
 		var form = {
 			title: 'Search',
 			type: 'form',
 			cols: 1,
 			items: [{
-				type: 'group',
+				type: 'panel',
 				title: schema.title,
 				items: schema.searchFields
 			}]
@@ -328,16 +339,18 @@ function SearchFormCtrl($scope, $element, ViewService) {
 	};
 }
 
+ui.controller('SearchGridCtrl', SearchGridCtrl);
+
 SearchGridCtrl.$inject = ['$scope', '$element', 'ViewService', '$interpolate'];
 function SearchGridCtrl($scope, $element, ViewService, $interpolate) {
 	
-	GridViewCtrl.call(this, $scope, $element);
+	ui.GridViewCtrl.call(this, $scope, $element);
 	$scope._register('grid', $scope);
 	
 	var viewTitles = {};
 
 	$scope.$watch('_searchView', function(schema) {
-		if (schema == null) return;
+		if (!schema) return;
 		var view = {
 			title: 'Search',
 			type: 'grid',
@@ -441,13 +454,14 @@ function SearchGridCtrl($scope, $element, ViewService, $interpolate) {
 				case "long":
 					value1 = value1 || 0;
 					value2 = value2 || 0;
+					break;
 				default:
 					value1 = value1 || "";
 					value2 = value2 || "";
 				}
 
 				var result = (value1 == value2 ? 0 : (value1 > value2 ? 1 : -1)) * sign;
-				if (result != 0) {
+				if (result) {
 					return result;
 				}
 			}
@@ -459,10 +473,12 @@ function SearchGridCtrl($scope, $element, ViewService, $interpolate) {
 	};
 }
 
+ui.controller('SearchToolbarCtrl', SearchToolbarCtrl);
+
 SearchToolbarCtrl.$inject = ['$scope', '$element', '$http'];
 function SearchToolbarCtrl($scope, $element, $http) {
 
-	FormViewCtrl.call(this, $scope, $element);
+	ui.FormViewCtrl.call(this, $scope, $element);
 	$scope._register('toolbar', $scope);
 	$scope.setEditable();
 	
@@ -470,7 +486,7 @@ function SearchToolbarCtrl($scope, $element, $http) {
 	
 	function fetch(key, parent, request, response) {
 		
-		if (menus[key] != null) {
+		if (menus[key]) {
 			return response(menus[key]);
 		}
 
@@ -522,9 +538,10 @@ function SearchToolbarCtrl($scope, $element, $http) {
 
 	$scope.$watch('_searchView', function(schema) {
 		
-		if (schema == null)
+		if (!schema) {
 			return;
-		
+		}
+
 		var selected = [];
 
 		$scope.fields = {
@@ -545,7 +562,7 @@ function SearchToolbarCtrl($scope, $element, $http) {
 			'menuRoot' : {
 				type : 'string',
 				placeholder: _t('Action Category'),
-				type: 'select-query',
+				widget: 'select-query',
 				attrs: {
 					query: 'fetchRootMenus',
 					'ng-change': 'resetSelector("menuSub", "menuItem")'
@@ -553,7 +570,7 @@ function SearchToolbarCtrl($scope, $element, $http) {
 			},
 			'menuSub' : {
 				placeholder: _t('Action Sub-Category'),
-				type: 'select-query',
+				widget: 'select-query',
 				attrs: {
 					query: 'fetchSubMenus',
 					'ng-change': 'resetSelector($event, "menuItem")'
@@ -561,7 +578,7 @@ function SearchToolbarCtrl($scope, $element, $http) {
 			},
 			'menuItem' : {
 				placeholder: _t('Action'),
-				type: 'select-query',
+				widget: 'select-query',
 				attrs: {
 					query: 'fetchItemMenus'
 				}
@@ -570,16 +587,19 @@ function SearchToolbarCtrl($scope, $element, $http) {
 
 		var items1 = [{
 			name : 'objectSelect',
-			showTitle : false
+			showTitle : false,
+			colSpan: 8
 		}, {
 			type : 'button',
 			title : _t('Search'),
+			colSpan: 2,
 			attrs: {
 				'ng-click': 'doSearch()'
 			}
 		}, {
 			type : 'button',
 			title : _t('Clear'),
+			colSpan: 2,
 			attrs: {
 				'ng-click': 'doClear(true)'
 			}
@@ -587,29 +607,45 @@ function SearchToolbarCtrl($scope, $element, $http) {
 		
 		var items2 = [{
 			name : 'menuRoot',
-			showTitle : false
+			showTitle : false,
+			colSpan: 3
 		}, {
 			name : 'menuSub',
-			showTitle : false
+			showTitle : false,
+			colSpan: 3
 		}, {
 			name : 'menuItem',
-			showTitle : false
+			showTitle : false,
+			colSpan: 4
 		}, {
 			type : 'button',
 			title : _t('Go'),
+			colSpan: 2,
 			attrs: {
 				'ng-click': 'doAction()'
 			}
 		}];
-
-		var schema = {
-			cols : 7,
-			colWidths : '250px,auto,auto,150px,150px,150px,auto',
-			type : 'form'
+		
+		var item1 = {
+			type: "panel",
+			colSpan: $scope._hideActions ? 12 : 6,
+			items: items1
 		};
 		
-		schema.items = $scope._hideActions ? items1 : _.union(items1, items2);
-		
+		var item2 = {
+			type: "panel",
+			colSpan: 6,
+			items: items2
+		};
+
+		schema = {
+			type : 'form',
+			items: [{
+				type: 'panel',
+				items: $scope._hideActions ? [item1] : [item1, item2]
+			}]
+		};
+
 		$scope.schema = schema;
 		$scope.schema.loaded = true;
 
@@ -651,13 +687,13 @@ angular.module('axelor.ui').directive('uiViewSearch', function(){
 ActionSelectorCtrl.$inject = ['$scope', '$element', '$attrs', '$http', 'MenuService'];
 function ActionSelectorCtrl($scope, $element, $attrs, $http, MenuService) {
 
-	FormViewCtrl.call(this, $scope, $element);
+	ui.FormViewCtrl.call(this, $scope, $element);
 	var menus = {},
 		category = $attrs.category;
 	
 	function fetch(key, request, response, params) {
 		
-		if (menus[key] != null) {
+		if (menus[key]) {
 			return response(menus[key]);
 		}
 
@@ -717,8 +753,9 @@ function ActionSelectorCtrl($scope, $element, $attrs, $http, MenuService) {
 	$scope.doAction = function() {
 		
 		var action = $scope.getMenuAction();
-		if (action == null)
+		if (!action) {
 			return;
+		}
 	
 		var context = $scope.$parent.getContext(),
 			record;
@@ -737,8 +774,8 @@ function ActionSelectorCtrl($scope, $element, $attrs, $http, MenuService) {
 			}
 			
 			var view = result.data[0].view;
-			
-			tab = view;
+			var tab = view;
+
 			tab.action = _.uniqueId('$act');
 			tab.viewType = 'form';
 			
@@ -754,7 +791,7 @@ function ActionSelectorCtrl($scope, $element, $attrs, $http, MenuService) {
 		'$menuRoot' : {
 			type : 'string',
 			placeholder: _t('Action Category'),
-			type: 'select-query',
+			widget: 'select-query',
 			attrs: {
 				query: 'fetchRootMenus',
 				'ng-change': 'resetSelector("$menuSub", "$menuItem")'
@@ -770,7 +807,7 @@ function ActionSelectorCtrl($scope, $element, $attrs, $http, MenuService) {
 		},
 		'$menuItem' : {
 			placeholder: _t('Action'),
-			type: 'select-query',
+			widget: 'select-query',
 			attrs: {
 				query: 'fetchItemMenus'
 			}
@@ -808,3 +845,4 @@ angular.module('axelor.ui').directive('uiActionSelector', function(){
 	};
 });
 
+})();

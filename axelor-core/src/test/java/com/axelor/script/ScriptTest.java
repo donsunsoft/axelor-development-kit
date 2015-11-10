@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -57,7 +57,7 @@ public abstract class ScriptTest extends JpaTest {
 
         Map<String, Object> ref = Maps.newHashMap();
         ref.put("_model", Contact.class.getName());
-        ref.put("id", 1);
+        ref.put("id", contacts.all().fetchOne().getId());
 
         data.put("_ref", ref);
         data.put("_parent", ref);

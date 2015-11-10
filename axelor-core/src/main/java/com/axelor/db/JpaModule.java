@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -120,7 +120,7 @@ public class JpaModule extends AbstractModule {
 			properties.put("hibernate.ejb.resource_scanner", "com.axelor.db.JpaScanner");
 		}
 		
-		properties.put("hibernate.ejb.interceptor", "com.axelor.auth.db.AuditInterceptor");
+		properties.put("hibernate.ejb.interceptor", "com.axelor.auth.AuditInterceptor");
 
 		properties.put("hibernate.connection.autocommit", "false");
 		properties.put("hibernate.id.new_generator_mappings", "true");

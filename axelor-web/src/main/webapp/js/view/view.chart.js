@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,41 +17,27 @@
  */
 (function(){
 
+/* global d3: true, nv: true, D3Funnel: true, RadarChart: true, GaugeChart: true  */
+
 "use strict";
-
-nv.dev = false;
-
-// i18n
-_.extend(nv.messages, {
-	'Grouped': _t('Grouped'),
-	'Stacked': _t('Stacked')
-});
 
 var ui = angular.module('axelor.ui');
 
-this.ChartCtrl = ChartCtrl;
+ui.ChartCtrl = ChartCtrl;
+ui.ChartCtrl.$inject = ['$scope', '$element', '$http'];
 
-ChartCtrl.$inject = ['$scope', '$element', '$http'];
 function ChartCtrl($scope, $element, $http) {
 
 	var views = $scope._views;
-	var view = $scope.view = views['chart'];
+	var view = $scope.view = views.chart;
 	
 	var viewChart = null;
 	var viewValues = null;
 
 	var loading = false;
+	var unwatch = null;
 
-	function refresh(force) {
-
-		if (loading || ($element.is(":hidden") && !force)) {
-			return;
-		}
-
-		// in case of onInit
-		if ($scope.searchInit && !viewValues && !force) {
-			return;
-		}
+	function refresh() {
 
 		var context = $scope._context || {};
 		if ($scope.getContext) {
@@ -95,14 +81,24 @@ function ChartCtrl($scope, $element, $http) {
 		});
 	}
 
-	$scope.$callWhen(function () {
-		return $element.is(":visible");
-	}, function() {
-		return refresh(true);
-	}, 100);
-
 	$scope.onRefresh = function(force) {
-		refresh(force);
+		if (unwatch || loading) {
+			return;
+		}
+
+		// in case of onInit
+		if ($scope.searchInit && !viewValues && !force) {
+			return;
+		}
+
+		unwatch = $scope.$watch(function () {
+			if ($element.is(":hidden")) {
+				return;
+			}
+			unwatch();
+			unwatch = null;
+			refresh();
+		});
 	};
 
 	$scope.setViewValues = function (values) {
@@ -112,14 +108,17 @@ function ChartCtrl($scope, $element, $http) {
 	$scope.render = function(data) {
 		
 	};
-};
+
+	// refresh to load chart
+	$scope.onRefresh();
+}
 
 ChartFormCtrl.$inject = ['$scope', '$element', 'ViewService', 'DataSource'];
 function ChartFormCtrl($scope, $element, ViewService, DataSource) {
 
 	$scope._dataSource = DataSource.create('com.axelor.meta.db.MetaView');
 	
-	FormViewCtrl.call(this, $scope, $element);
+	ui.FormViewCtrl.call(this, $scope, $element);
 	$scope.setEditable();
 	
 	function fixFields(fields) {
@@ -167,11 +166,12 @@ function ChartFormCtrl($scope, $element, ViewService, DataSource) {
 		$scope.schema = view;
 		$scope.schema.loaded = true;
 
-		var interval = undefined;
+		var interval;
 
 		function reload() {
 			$scope.$parent.setViewValues($scope.record);
 			$scope.$parent.onRefresh();
+			$scope.applyLater();
 		}
 		
 		function delayedReload() {
@@ -190,7 +190,8 @@ function ChartFormCtrl($scope, $element, ViewService, DataSource) {
 
 		$scope.$watch('record', function (record) {
 			if (interval === undefined) {
-				return interval = null;
+				interval = null;
+				return;
 			}
 			if ($scope.isValid()) delayedReload();
 		}, true);
@@ -296,7 +297,7 @@ function PieChart(scope, element, data) {
 	if (_.toBoolean(config.percent)) {
 		chart.showLabels(true)
 			.labelType("percent")
-			.labelThreshold(.05);
+			.labelThreshold(0.05);
 	}
 	
 	d3.select(element[0])
@@ -364,9 +365,39 @@ function HBarChart(scope, element, data) {
 	return chart;
 }
 
+function FunnelChart(scope, element, data) {
+	
+	var chart = new D3Funnel(element[0]);
+	var w = element.width();
+	var h = element.height();
+	var config = _.extend({}, data.config);
+	var props = {
+			fillType: 'gradient',
+			hoverEffects: true,
+			dynamicArea: true,
+			animation: 200};
+	
+	if(config.width){
+		props.width = w*config.width/100;
+	}
+	if(config.height){
+		props.height = h*config.height/100;
+	}
+	
+	var series = _.first(data.series) || {};
+	var opts = [];
+	_.each(data.dataset, function(dat){
+		opts.push([dat[data.xAxis],($conv(dat[series.key])||0)]);
+	});
+	chart.draw(opts, props);
+	
+	return chart;
+}
+
 CHARTS.bar = BarChart;
 CHARTS.dbar = DBarChart;
 CHARTS.hbar = HBarChart;
+CHARTS.funnel = FunnelChart;
 
 function LineChart(scope, element, data) {
 
@@ -544,18 +575,25 @@ function Chart(scope, element, data) {
 
 	nv.addGraph(function generate() {
 		
+		var noData = _t('No records found.');
+		if (data.dataset && data.dataset.stacktrace) {
+			noData = data.dataset.message;
+			data.dataset = [];
+		}
+
 		var maker = CHARTS[type] || CHARTS.bar || function () {};
 		var chart = maker(scope, element, data);
 
-		if (chart == null) {
+		if (!chart) {
 			return;
 		}
 
 		if (chart.noData) {
-			chart.noData(_t('No records found.'));
+			chart.noData(noData);
 		}
 		if(chart.controlLabels) {
 			chart.controlLabels({
+				grouped: _t('Grouped'),
 				stacked: _t('Stacked'),
 				stream: _t('Stream'),
 				expanded: _t('Expanded'),
@@ -572,11 +610,11 @@ function Chart(scope, element, data) {
 				var v = "" + d;
 				var f = config.xFormat;
 				if (v.indexOf(".") > -1) return "";
-				if (_.isString(d) && /\d+/.test(d)) {
+				if (_.isString(d) && /^(\d+)$/.test(d)) {
 					d = parseInt(d);
 				}
 				if (_.isNumber(d)) {
-					return moment([2000, d - 1, 1]).format(f || "MMM");
+					return moment([moment().year(), d - 1, 1]).format(f || "MMM");
 				}
 				if (_.isString(d) && d.indexOf('-') > 0) {
 					return moment(d).format(f || 'MMM, YYYY');
@@ -584,7 +622,7 @@ function Chart(scope, element, data) {
 				return d;
 			},
 			"year" : function(d) {
-				return moment([2000, d - 1, 1]).format("YYYY");
+				return moment([moment().year(), d - 1, 1]).format("YYYY");
 			},
 			"number": d3.format(',f'),
 			"decimal": d3.format(',.1f'),
@@ -601,7 +639,19 @@ function Chart(scope, element, data) {
 		if (chart.yAxis && data.yTitle) {
 			chart.yAxis.axisLabel(data.yTitle);
 		}
-		
+
+		var margin = null;
+		['top', 'left', 'bottom', 'right'].forEach(function (side) {
+			var key = 'margin-' + side;
+			var val = parseInt(config[key]);
+			if (val) {
+				(margin||(margin={}))[side] = val;
+			}
+		});
+		if (chart.margin && margin) {
+			chart.margin(margin);
+		}
+
 		var lastWidth = 0;
 		var lastHeight = 0;
 		
@@ -642,12 +692,16 @@ var directiveFn = function(){
 			
 			scope.render = function(data) {
 				if (svg.is(":hidden")) {
-					return initialized = false;
+					initialized = false;
+					return;
 				}
-				svg.height(element.height() - form.height()).width('100%');
-				scope.title = data.title;
-				Chart(scope, svg, data);
-				return initialized = true;
+				setTimeout(function () {
+					svg.height(element.height() - form.height()).width('100%');
+					scope.title = data.title;
+					Chart(scope, svg, data);
+					initialized = true;
+					return;
+				});
 			};
 
 			element.on("adjustSize", function(e){
@@ -693,4 +747,4 @@ ui.directive('uiChartForm', function () {
 ui.directive('uiViewChart', directiveFn);
 ui.directive('uiPortletChart', directiveFn);
 
-}).call(this);
+})();

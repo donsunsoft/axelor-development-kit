@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -28,7 +28,6 @@ import java.net.URL;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import com.axelor.common.FileUtils;
@@ -39,7 +38,6 @@ import com.google.common.base.Throwables;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.Files;
 import com.google.common.io.LineReader;
-import com.google.inject.Injector;
 
 @Singleton
 class DataLoader extends AbstractLoader {
@@ -52,9 +50,6 @@ class DataLoader extends AbstractLoader {
 	private static Pattern patCsv = Pattern.compile("^\\<\\s*csv-inputs");
 	private static Pattern patXml = Pattern.compile("^\\<\\s*xml-inputs");
 
-	@Inject
-	private Injector injector;
-	
 	@Override
 	protected void doLoad(Module module, boolean update) {
 
@@ -70,6 +65,9 @@ class DataLoader extends AbstractLoader {
 			} else if (isConfig(config, patXml)) {
 				importXml(config);
 			}
+		} catch (IOException e) {
+			log.error(e.getMessage(), e);
+			throw Throwables.propagate(e);
 		} finally {
 			clean(tmp);
 		}
@@ -77,18 +75,14 @@ class DataLoader extends AbstractLoader {
 	
 	private void importCsv(File config) {
 		File data = FileUtils.getFile(config.getParentFile(), INPUT_DIR_NAME);
-		CSVImporter importer = new CSVImporter(injector, config.getAbsolutePath(), data.getAbsolutePath(), null);
-		try {
-			importer.run(null);
-		} catch (IOException e) {
-			throw Throwables.propagate(e);
-		}
+		CSVImporter importer = new CSVImporter(config.getAbsolutePath(), data.getAbsolutePath(), null);
+		importer.run();
 	}
 
-	private void importXml(File config) {
+	private void importXml(File config) throws IOException {
 		File data = FileUtils.getFile(config.getParentFile(), INPUT_DIR_NAME);
-		XMLImporter importer = new XMLImporter(injector, config.getAbsolutePath(), data.getAbsolutePath());
-		importer.run(null);
+		XMLImporter importer = new XMLImporter(config.getAbsolutePath(), data.getAbsolutePath());
+		importer.run();
 	}
 
 	private boolean isConfig(File file, Pattern pattern) {
@@ -103,6 +97,7 @@ class DataLoader extends AbstractLoader {
 			}
 			reader.close();
 		} catch (IOException e) {
+			log.error(e.getMessage(), e);
 		}
 		return false;
 	}
@@ -128,6 +123,7 @@ class DataLoader extends AbstractLoader {
 			try {
 				copy(file.openStream(), tmp, name);
 			} catch (IOException e) {
+				log.error(e.getMessage(), e);
 				throw Throwables.propagate(e);
 			}
 		}

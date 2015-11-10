@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -83,7 +85,7 @@ ui.formWidget('Group', {
 		'<fieldset ng-class="{\'bordered-box\': title, \'has-title\': title}" x-layout-selector="&gt; div:first">'+
 			'<legend ng-show="title">'+
 				'<i ng-show="canCollapse()" ng-click="toggle()" ng-class="{\'fa fa-plus\': collapsed, \'fa fa-minus\': !collapsed}"></i>'+
-				'<span ng-bind-html-unsafe="title"></span></legend>'+
+				'<span ng-bind-html="title"></span></legend>'+
 			'<div ui-transclude></div>'+
 		'</fieldset>'
 });
@@ -141,18 +143,6 @@ ui.formWidget('Dashlet', {
 		if (field.name) {
 			scope.formPath = field.name;
 		}
-
-		if (field.height) {
-			element.height(field.height);
-		}
-
-		element.resizable({
-			handles: 's',
-			resize: _.debounce(function() {
-				axelor.$adjustSize();
-				element.width('auto');
-			}, 100)
-		});
 	},
 
 	template:
@@ -277,7 +267,7 @@ ui.formWidget('Tabs', {
 				return axelor.$adjustSize();
 			
 			for(var i = 0 ; i < tabs.length ; i++) {
-				var tab = tabs[i];
+				tab = tabs[i];
 				if (!tab.hidden) {
 					return $scope.select(tabs[i]);
 				}
@@ -321,7 +311,7 @@ ui.formWidget('Tabs', {
 						'<li tabindex="-1" ng-repeat="tab in tabs" ng-class="{active:tab.tabSelected}">'+
 							'<a tabindex="-1" href="" ng-click="select(tab)">'+
 								'<img class="prefix-icon" ng-show="tab.icon" ng-src="{{tab.icon}}">'+
-								'<span ng-bind-html-unsafe="tab.title"></span>'+
+								'<span ng-bind-html="tab.title"></span>'+
 							'</a>' +
 						'</li>' +
 					'</ul>' +
@@ -331,7 +321,7 @@ ui.formWidget('Tabs', {
 						'<a class="dropdown-toggle" data-toggle="dropdown" href="#"><i class="caret"></i></a>'+
 							'<ul class="dropdown-menu" role="menu">'+
 							    '<li ng-repeat="tab in tabs">'+
-							    	'<a tabindex="-1" href="javascript: void(0)" ng-click="select(tab)" ng-bind-html-unsafe="tab.title"></a>'+
+							    	'<a tabindex="-1" href="javascript: void(0)" ng-click="select(tab)" ng-bind-html="tab.title"></a>'+
 							    '</li>' +
 							'</ul>' +
 						'</a>'+
@@ -398,7 +388,7 @@ ui.formWidget('ButtonGroup', {
 		}
 		scope.$watch(adjust);
 		scope.$callWhen(function () {
-			return element.is(':visible')
+			return element.is(':visible');
 		}, adjust);
 	},
 	transclude: true,
@@ -419,7 +409,7 @@ ui.formWidget('Panel', {
 
 		element.addClass(field.serverType);
 		if (field.sidebar && !attrs.itemSpan) {
-			attrs.$set('itemSpan', 12);
+			attrs.$set('itemSpan', 12, true, 'x-item-span');
 		}
 
 		scope.menus = null;
@@ -512,7 +502,7 @@ ui.formWidget('PanelTabs', {
 				elem: elem,
 				tabItem: $(),
 				menuItem: $()
-			}
+			};
 			scope.tabs.push(tab);
 		});
 		
@@ -612,7 +602,7 @@ ui.formWidget('PanelTabs', {
 
 			var tabs = scope.tabs;
 			for(var i = 0 ; i < tabs.length ; i++) {
-				var tab = tabs[i];
+				tab = tabs[i];
 				if (!tab.hidden) {
 					return scope.selectTab(tabs[i]);
 				}
@@ -684,12 +674,17 @@ ui.formWidget('PanelTabs', {
 			elemMenuTitle.empty();
 			elemMenuItems.hide().data('visible', null);
 
-			var count = 0;
 			var width = 0;
 			var last = null;
+			var tab, count;
 
-			while (count < scope.tabs.length) {
-				var tab = scope.tabs[count++];
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
+				tab.$visible = false;
+			}
+
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
 				var elem = tab.tabItem;
 
 				if (tab.hidden) {
@@ -700,21 +695,25 @@ ui.formWidget('PanelTabs', {
 				if (width > parentWidth && last) {
 					// requires menu...
 					elem.hide();
-					count--;
 					if (width + menuWidth - elem.width() > parentWidth) {
-						last.hide();
-						count--;
+						last.tabItem.hide();
+						last.$visible = false;
 					}
 					break;
 				}
-				last = elem.css('visibility', '');
+				tab.$visible = true;
+				elem.css('visibility', '');
+				last = tab;
 			}
-			while(count < elemTabs.size()) {
-				var tab = scope.tabs[count++];
-				if (tab.hidden) continue;
-				$(elemMenuItems[count-1]).show().data('visible', true);
+
+			var menuVisible = false;
+			for (count = 0; count < scope.tabs.length; count++) {
+				tab = scope.tabs[count];
+				if (tab.hidden || tab.$visible) continue;
+				tab.menuItem.show().data('visible', true);
+				menuVisible = true;
 			}
-			if (count === elemTabs.size()) {
+			if (!menuVisible) {
 				elemMenu.hide();
 			}
 			setMenuTitle();
@@ -725,7 +724,12 @@ ui.formWidget('PanelTabs', {
 
 		scope.$timeout(function() {
 			setup();
-			scope.selectTab(_.first(scope.tabs));
+			var first = _.find(scope.tabs, function (tab) {
+				return !tab.hidden;
+			});
+			if (first) {
+				scope.selectTab(first);
+			}
 		});
 
 		scope.$on('on:edit', function (e, record) {
@@ -740,7 +744,7 @@ ui.formWidget('PanelTabs', {
 		"<div class='panel-tabs tabbable-tabs'>" +
 			"<ul class='nav nav-tabs nav-tabs-responsive'>" +
 				"<li ng-repeat='tab in tabs' ng-class='{active: tab.selected}'>" +
-					"<a tabindex='-1' href='' ng-click='selectTab(tab)' ng-bind-html-unsafe='tab.title'></a>" +
+					"<a tabindex='-1' href='' ng-click='selectTab(tab)' ng-bind-html='tab.title'></a>" +
 				"</li>" +
 				"<li class='dropdown' ng-class='{active: more.selected}' style='display: none'>" +
 					"<a tabindex='-1' href='' title='{{more.title}}' class='dropdown-toggle' ng-click='onMenuClick($event)'>" +
@@ -748,7 +752,7 @@ ui.formWidget('PanelTabs', {
 					"</a>" +
 					"<ul class='dropdown-menu pull-right' data-toggle='dropdown'>" +
 						"<li ng-repeat='tab in tabs' ng-class='{active: tab.selected}'>" +
-							"<a tabindex='-1' href='' ng-click='selectTab(tab)' ng-bind-html-unsafe='tab.title'></a>" +
+							"<a tabindex='-1' href='' ng-click='selectTab(tab)' ng-bind-html='tab.title'></a>" +
 						"</li>" +
 					"</ul>" +
 				"</li>" +
@@ -787,12 +791,14 @@ ui.formWidget('PanelTab', {
 		});
 
 		scope.$watch("attr('hidden')", function(hidden, old) {
-			if (hidden) {
-				return scope.hideTab(index);
-			}
-			return scope.showTab(index);
+			scope.$evalAsync(function () {
+				if (hidden) {
+					return scope.hideTab(index);
+				}
+				return scope.showTab(index);
+			});
 		});
 	}
 });
 
-})(this);
+})();

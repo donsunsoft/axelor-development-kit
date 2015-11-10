@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -36,7 +36,7 @@ import com.axelor.data.xml.XMLImporter;
 import com.axelor.db.Model;
 import com.axelor.meta.ActionHandler;
 import com.axelor.meta.MetaStore;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -96,7 +96,7 @@ public class ActionImport extends Action {
 		});
 
 		importer.setCanClear(false);
-		importer.runTask(new ImportTask() {
+		importer.run(new ImportTask() {
 
 			@Override
 			public void configure() throws IOException {
@@ -126,7 +126,7 @@ public class ActionImport extends Action {
 		}
 
 		log.info("action-import (config): " + configName.toString());
-		XMLImporter importer = new XMLImporter(handler.getInjector(), configName.toString());
+		XMLImporter importer = new XMLImporter(configName.toString());
 		importer.setContext(handler.getContext());
 
 		int count = 0;
@@ -174,7 +174,7 @@ public class ActionImport extends Action {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(getClass()).add("name", getName()).toString();
+		return MoreObjects.toStringHelper(getClass()).add("name", getName()).toString();
 	}
 
 	@XmlType
@@ -203,7 +203,7 @@ public class ActionImport extends Action {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(getClass())
+			return MoreObjects.toStringHelper(getClass())
 					.add("file", file)
 					.add("provider", provider)
 					.toString();

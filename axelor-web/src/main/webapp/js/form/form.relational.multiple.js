@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module("axelor.ui");
 
@@ -25,7 +27,7 @@ ui.OneToManyCtrl.$inject = ['$scope', '$element', 'DataSource', 'ViewService'];
 function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) {
 
 	ui.RefFieldCtrl.call(this, $scope, $element, DataSource, ViewService, function(){
-		GridViewCtrl.call(this, $scope, $element);
+		ui.GridViewCtrl.call(this, $scope, $element);
 		$scope.editorCanSave = false;
 		$scope.selectEnable = false;
 		if (initCallback) {
@@ -115,8 +117,14 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 			if (rec.id <= 0) rec.id = null;
 		});
 		
+		if ($scope.dataView.$resequence) {
+			$scope.dataView.$resequence(records);
+		}
+
+		var callOnChange = $scope.dataView.$isResequencing !== true;
+
 		$scope.itemsPending = records;
-		$scope.setValue(records, true);
+		$scope.setValue(records, callOnChange);
 		$scope.applyLater(function(){
 			$scope.$broadcast('grid:changed');
 		});
@@ -179,7 +187,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 	$scope.canShowEdit = function () {
 		var selected = $scope.selection.length ? $scope.selection[0] : null;
 		return selected !== null && $scope.canView();
-	}
+	};
 	
 	$scope.canEdit = function () {
 		return $scope.attr('canEdit') !== false && $scope.canView();
@@ -190,7 +198,26 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 		var selected = $scope.selection.length ? $scope.selection[0] : null;
 		return _canRemove() && selected !== null;
 	};
-	
+
+	$scope.canCopy = function () {
+		if (!$scope.field || !($scope.field.widgetAttrs||{}).canCopy) return false;
+		if (!$scope.canNew()) return false;
+		if (!$scope.selection || $scope.selection.length !== 1) return false;
+		var record = $scope.dataView.getItem(_.first($scope.selection));
+		return record && record.id > -1;
+	};
+
+	$scope.onCopy = function() {
+		var ds = $scope._dataSource;
+		var index = _.first($scope.selection);
+		var item = $scope.dataView.getItem(index);
+		if (item && item.id > 0) {
+			ds.copy(item.id).success(function(record) {
+				$scope.select([record]);
+			});
+		}
+	};
+
 	$scope.onEdit = function() {
 		var selected = $scope.selection.length ? $scope.selection[0] : null;
 		if (selected !== null) {
@@ -268,7 +295,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 				items.push(item);
 			});
 			return items;
-		};
+		}
 
 		function fetchData() {
 			var items = scope.getValue();
@@ -298,7 +325,7 @@ function OneToManyCtrl($scope, $element, DataSource, ViewService, initCallback) 
 		}
 
 		var records = $scope.getItems();
-		if (records == null || records.length == 0)
+		if (records == null || records.length === 0)
 			return;
 
 		for (var i = 0; i < records.length; i++) {
@@ -404,7 +431,7 @@ ui.formInput('OneToMany', {
 				doRenderUnwatch = null;
 					scope.$$fetchData();
 				});
-		};
+		}
 		
 		function isVisible() {
 			return !element.is(':hidden');
@@ -429,6 +456,8 @@ ui.formInput('OneToMany', {
 			if (elem.is('.panel-related')) {
 				elem = element.children('.panel-body');
 				minSize = 28;
+			} else if (scope.$hasPanels) {
+				minSize += 28;
 			}
 			if (elem.is('.picker-input')) {
 				elem = null;
@@ -513,7 +542,7 @@ ui.formInput('OneToMany', {
 				adjustSize(items, rows - items.length + 1);
 			});
 
-			if (!(scope._viewParams || {}).summaryView) {
+			if (!(scope._viewParams || {}).summaryView || scope.field.widget === "MasterDetail") {
 				return;
 			}
 			var col = {
@@ -583,7 +612,7 @@ ui.formInput('OneToMany', {
 	'<div class="navbar">'+
 		'<div class="navbar-inner">'+
 			'<div class="container-fluid">'+
-				'<span class="brand" href="" ui-help-popover ng-bind-html-unsafe="title"></span>'+
+				'<span class="brand" href="" ui-help-popover ng-bind-html="title"></span>'+
 				'<span class="icons-bar pull-right" ng-show="!isReadonly()">'+
 					'<i ng-click="onEdit()" ng-show="hasPermission(\'read\') && canShowEdit()" title="{{\'Edit\' | t}}" class="fa fa-pencil"></i>'+
 					'<i ng-click="onNew()" ng-show="hasPermission(\'write\') && !isDisabled() && canNew()" title="{{\'New\' | t}}" class="fa fa-plus"></i>'+
@@ -618,10 +647,11 @@ var panelRelatedTemplate =
 		"<div class='icons-bar pull-right' ng-show='!isReadonly()'>" +
 			"<i ng-click='onEdit()' ng-show='hasPermission(\"read\") && canShowEdit()' class='fa fa-pencil'></i>" +
 			"<i ng-click='onNew()' ng-show='hasPermission(\"create\") && !isDisabled() && canNew()' class='fa fa-plus'></i>" +
+			"<i ng-click='onCopy()' ng-show='hasPermission(\"create\") && !isDisabled() && canCopy()' class='fa fa-files-o'></i>" +
 			"<i ng-click='onRemove()' ng-show='hasPermission(\"read\") && !isDisabled() && canRemove()' class='fa fa-minus'></i>" +
 			"<i ng-click='onSelect()' ng-show='hasPermission(\"read\") && !isDisabled() && canSelect()' class='fa fa-search'></i>" +
 		"</div>" +
-		"<div class='panel-title'><span ui-help-popover ng-bind-html-unsafe='title'></span></div>" +
+		"<div class='panel-title'><span ui-help-popover ng-bind-html='title'></span></div>" +
 	"</div>" +
 	"<div class='panel-body panel-layout'>" +
 		"<div ui-view-grid " +
@@ -911,15 +941,15 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 		var field = scope.field;
 		var tmpl = field.viewer;
 		if (!tmpl && field.editor && (field.editor.viewer || !field.targetName)) {
-			tmpl = '<div ui-panel-editor>';
+			tmpl = '<div ui-panel-editor></div>';
 		}
 		if (!tmpl && field.targetName) {
 			tmpl = '{{record.' + field.targetName + '}}';
 		}
 		tmpl = tmpl || '{{record.id}}';
 		return "<div class='o2m-list'>" +
-		"<div class='o2m-list-row' ng-class-even=\"'even'\" ng-repeat='record in items' ng-bind-html='tmpl'>" + tmpl + "</div>" +
-		"</div>"
+		"<div class='o2m-list-row' ng-class-even=\"'even'\" ng-repeat='record in items'>" + tmpl + "</div>" +
+		"</div>";
 	},
 
 	template_editable: function (scope) {
@@ -933,7 +963,7 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 			"<div class='o2m-list-row o2m-list-add'>" +
 				"<a tabindex='-1' href='' ng-click='addItem()'><i class='fa fa-plus'></i></a>" +
 			"</div>" +
-		"</div>"
+		"</div>";
 	},
 	template: null
 });
@@ -1122,4 +1152,4 @@ ui.formInput('ManyToManyInline', 'OneToManyInline', {
 	}
 });
 
-}).call(this);
+})();

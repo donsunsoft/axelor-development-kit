@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,13 +17,15 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module("axelor.ui");
 
 var NestedForm = {
 	scope: true,
 	controller: [ '$scope', '$element', function($scope, $element) {
 		
-		FormViewCtrl.call(this, $scope, $element);
+		ui.FormViewCtrl.call(this, $scope, $element);
 		
 		$scope.onShow = function(viewPromise) {
 			
@@ -56,8 +58,8 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 	params.views = _.compact([params.summaryView || params.summaryViewDefault]);
 	$scope._viewParams = params;
 
-	ViewCtrl($scope, DataSource, ViewService);
-	FormViewCtrl.call(this, $scope, $element);
+	ui.ViewCtrl($scope, DataSource, ViewService);
+	ui.FormViewCtrl.call(this, $scope, $element);
 
 	$scope.visible = false;
 	$scope.onShow = function() {
@@ -74,7 +76,7 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 		} else {
 			originalEdit(record);
 		}
-	};
+	}
 	
 	function doClose() {
 		if ($scope.isDetailView) {
@@ -87,7 +89,7 @@ function EmbeddedEditorCtrl($scope, $element, DataSource, ViewService) {
 			$element.hide();
 			$element.data('$rel').show();
 		});
-	};
+	}
 	
 	$scope.edit = function(record) {
 		doEdit(record);
@@ -384,7 +386,7 @@ var NestedEditor = {
 	template:
 	'<fieldset class="form-item-group bordered-box" ui-show="visible">'+
 		'<legend>'+
-			'<span ng-bind-html-unsafe="title"></span> '+
+			'<span ng-bind-html="title"></span> '+
 			'<span class="legend-toolbar" style="display: none;" ng-show="!isReadonly()">'+
 				'<a href="" tabindex="-1" ng-click="onClear()" title="{{\'Clear\' | t}}" ng-show="canShowIcon(\'clear\')"><i class="fa fa-ban"></i></a> '+
 				'<a href="" tabindex="-1" ng-click="onSelect()" title="{{\'Select\' | t}}" ng-show="canShowIcon(\'select\')"><i class="fa fa-search"></i></a> '+
@@ -399,4 +401,4 @@ ui.formDirective('uiNestedEditor', NestedEditor);
 ui.formDirective('uiEmbeddedEditor', EmbeddedEditor);
 ui.formDirective('uiNestedForm', NestedForm);
 
-}).call(this);
+})();

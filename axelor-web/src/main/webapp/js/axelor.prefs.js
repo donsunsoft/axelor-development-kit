@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,7 +17,9 @@
  */
 (function() {
 
-var app = angular.module("axelor.app");
+"use strict";
+
+var ui = angular.module("axelor.ui");
 
 function UserCtrl($scope, $element, $location, DataSource, ViewService) {
 	
@@ -26,8 +28,8 @@ function UserCtrl($scope, $element, $location, DataSource, ViewService) {
 		views: [{name: 'user-preferences-form', type: 'form'}]
 	};
 	
-	ViewCtrl($scope, DataSource, ViewService);
-	FormViewCtrl($scope, $element);
+	ui.ViewCtrl($scope, DataSource, ViewService);
+	ui.FormViewCtrl($scope, $element);
 	
 	$scope.onClose = function() {
 		$scope.confirmDirty(doClose);
@@ -39,22 +41,21 @@ function UserCtrl($scope, $element, $location, DataSource, ViewService) {
 	$scope.getContext = function() {
 		var context = __getContext.apply($scope, arguments) || {};
 		if (!context.code) {
-			context.code = __appSettings['user.login'];
+			context.code = axelor.config['user.login'];
 		}
 		return context;
 	};
 	
 	$scope.$watch('record.version', function (value) {
 		if (value === null || value === undefined) return;
-		if (__version !== null) return 
+		if (__version !== null) return;
 		__version = value;
 	});
 	
 	function doClose() {
 		if (!$scope.isDirty()) {
-			var app = $scope.app || {};
 			var rec = $scope.record || {};
-			app.homeAction = rec.homeAction;
+			axelor.config["user.action"] = rec.homeAction;
 		}
 		
 		window.history.back();
@@ -66,7 +67,7 @@ function UserCtrl($scope, $element, $location, DataSource, ViewService) {
 		setTimeout(function() {
 			window.location.reload();
 		}, 100);
-	};
+	}
 
 	$scope.setEditable();
 	$scope.show();
@@ -74,6 +75,17 @@ function UserCtrl($scope, $element, $location, DataSource, ViewService) {
 	$scope.ajaxStop(function () {
 		$scope.applyLater();
 	});
+}
+
+function AboutCtrl($scope) {
+	$scope.appName = axelor.config["application.name"];
+	$scope.appDescription = axelor.config["application.description"];
+	$scope.appVersion = axelor.config["application.version"];
+	$scope.appCopyright = axelor.config["application.copyright"];
+	$scope.appSdk = axelor.config["application.sdk"];
+	$scope.appHome = axelor.config["application.home"];
+	$scope.appHelp = axelor.config["application.help"];
+	$scope.appYear = moment().year();
 }
 
 function SystemCtrl($scope, $element, $location, $http) {
@@ -103,7 +115,8 @@ function SystemCtrl($scope, $element, $location, $http) {
 	$scope.onRefresh();
 }
 
-app.controller("UserCtrl", ['$scope', '$element', '$location', 'DataSource', 'ViewService', UserCtrl]);
-app.controller("SystemCtrl", ['$scope', '$element', '$location', '$http', SystemCtrl]);
+ui.controller("UserCtrl", ['$scope', '$element', '$location', 'DataSource', 'ViewService', UserCtrl]);
+ui.controller("SystemCtrl", ['$scope', '$element', '$location', '$http', SystemCtrl]);
+ui.controller("AboutCtrl", ['$scope', AboutCtrl]);
 
-}).call(this);
+})();

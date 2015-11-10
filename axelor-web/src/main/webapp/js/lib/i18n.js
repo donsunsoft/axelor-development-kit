@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,10 +17,12 @@
  */
 (function() {
 
-var bundle = {};
+"use strict";
+
+var bundle = (window._t || {}).bundle || {};
 
 function gettext(key) {
-	var message = bundle[key] || key;
+	var message = bundle[key] || bundle[(key||'').trim()] || key;
 	if (message && arguments.length > 1) {
 		for(var i = 1 ; i < arguments.length ; i++) {
 			var placeholder = new RegExp('\\{' + (i-1) + '\\}', 'g');
@@ -30,13 +32,6 @@ function gettext(key) {
 	}
 	return message;
 }
-
-gettext.put = function(messages) {
-	message = messages || {};
-	for(var key in messages) {
-		bundle[key] = messages[key];
-	}
-};
 
 this._t = gettext;
 

@@ -1,33 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema targetNamespace="http://axelor.com/xml/ns/domain-models"
   xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:dm="http://axelor.com/xml/ns/domain-models"
-  elementFormDefault="qualified" attributeFormDefault="unqualified" version="3.0">
+  elementFormDefault="qualified" attributeFormDefault="unqualified" version="4.0">
 
   <xsd:element name="domain-models">
     <xsd:complexType>
       <xsd:sequence>
-        <xsd:element name="module" maxOccurs="1" minOccurs="1">
+        <xsd:element name="module" type="dm:Namespace">
           <xsd:annotation>
             <xsd:documentation>
-              Module settings.
+              Specify module namespace information.
             </xsd:documentation>
           </xsd:annotation>
-          <xsd:complexType>
-            <xsd:attribute name="name" type="xsd:string" use="required">
-              <xsd:annotation>
-                <xsd:documentation>
-                  Provide name for the package. Package will be "com.axelor.${name}.db".
-                </xsd:documentation>
-              </xsd:annotation>
-            </xsd:attribute>
-            <xsd:attribute name="package" type="xsd:string">
-              <xsd:annotation>
-                <xsd:documentation>
-                  Define a custom package name for the entity.
-                </xsd:documentation>
-              </xsd:annotation>
-            </xsd:attribute>
-          </xsd:complexType>
         </xsd:element>
         <xsd:element name="sequence" minOccurs="0" maxOccurs="unbounded" type="dm:Sequence">
           <xsd:annotation>
@@ -47,6 +31,33 @@
       </xsd:sequence>
     </xsd:complexType>
   </xsd:element>
+
+  <xsd:complexType name="Namespace">
+    <xsd:attribute name="name" type="xsd:string" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          Specify module name.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="package" type="xsd:string" use="required">
+      <xsd:annotation>
+        <xsd:documentation>
+          Specify package name for entities, default is "${name}.db".
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="repo-package" type="xsd:string">
+      <xsd:annotation>
+        <xsd:documentation>Specify package name for repositories, default is "${package}.repo"</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="table-prefix" type="xsd:string">
+      <xsd:annotation>
+        <xsd:documentation>Specify table name prefix to use, default is "${name}_"</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
 
   <xsd:complexType name="Sequence">
     <xsd:attribute name="name" type="xsd:string" use="required">
@@ -95,7 +106,7 @@
       </xsd:annotation>
       <xsd:simpleType>
         <xsd:restriction base="xsd:string">
-          <xsd:pattern value="[a-z][a-zA-Z0-9_]+" />
+          <xsd:pattern value="([a-z][a-zA-Z0-9_]+)|([A-Z][A-Z0-9_]+)" />
         </xsd:restriction>
       </xsd:simpleType>
     </xsd:attribute>
@@ -271,7 +282,7 @@
         <xsd:attribute name="ref" use="required">
           <xsd:annotation>
             <xsd:documentation>
-              Fully quolified name of the reference entity class.
+              Fully qualified name of the reference entity class.
             </xsd:documentation>
           </xsd:annotation>
           <xsd:simpleType>
@@ -289,10 +300,10 @@
             </xsd:documentation>
           </xsd:annotation>
         </xsd:attribute>
-        <xsd:attribute name="orphan" type="xsd:boolean">
+        <xsd:attribute name="orphanRemoval" type="xsd:boolean">
           <xsd:annotation>
             <xsd:documentation>
-              Whether to allow orphaned records if parent record is deleted.
+            Specify whether to remove orphaned records if they have been removed from the relationship.
             </xsd:documentation>
           </xsd:annotation>
         </xsd:attribute>
@@ -314,7 +325,6 @@
     <xsd:complexContent mixed="true">
       <xsd:restriction base="dm:RelationalColumn">
         <xsd:attribute name="orderBy" type="xsd:string" use="prohibited"/>
-        <xsd:attribute name="orphan" type="xsd:string" use="prohibited"/>
       </xsd:restriction>
     </xsd:complexContent>
   </xsd:complexType>
@@ -327,7 +337,7 @@
       <xsd:restriction base="dm:RelationalColumn">
         <xsd:attribute name="mappedBy" type="xsd:string" use="prohibited"/>
         <xsd:attribute name="orderBy" type="xsd:string" use="prohibited"/>
-        <xsd:attribute name="orphan" type="xsd:string" use="prohibited"/>
+        <xsd:attribute name="orphanRemoval" type="xsd:boolean" use="prohibited"/>
       </xsd:restriction>
     </xsd:complexContent>
   </xsd:complexType>
@@ -351,7 +361,7 @@
     </xsd:annotation>
     <xsd:complexContent>
       <xsd:restriction base="dm:RelationalColumn">
-        <xsd:attribute name="orphan" type="xsd:boolean" use="prohibited"/>
+        <xsd:attribute name="orphanRemoval" type="xsd:boolean" use="prohibited"/>
         <xsd:attribute name="unique" type="xsd:boolean" use="prohibited"/>
         <xsd:attribute name="index" type="xsd:boolean" use="prohibited"/>
         <xsd:attribute name="massUpdate" type="xsd:boolean" use="prohibited"/>
@@ -389,7 +399,7 @@
         <xsd:attribute name="search">
           <xsd:annotation>
             <xsd:documentation>
-              Comma seperated list of field names used by autocompletion UI component to search.
+              Comma separated list of field names used by auto-completion UI component to search.
             </xsd:documentation>
           </xsd:annotation>
           <xsd:simpleType>
@@ -409,6 +419,13 @@
           <xsd:annotation>
             <xsd:documentation>
             User the specified custom sequence generator.
+            </xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="translatable" type="xsd:boolean">
+          <xsd:annotation>
+            <xsd:documentation>
+            Specify whether the field value is translatable.
             </xsd:documentation>
           </xsd:annotation>
         </xsd:attribute>
@@ -559,6 +576,118 @@
     </xsd:attribute>
   </xsd:complexType>
 
+  <xsd:simpleType name="TrackEvent">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="ALWAYS">
+        <xsd:annotation>
+          <xsd:documentation>Always track the changes</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="CREATE">
+        <xsd:annotation>
+          <xsd:documentation>Only track when creating new record</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="UPDATE">
+        <xsd:annotation>
+          <xsd:documentation>Only track when updating the record</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="TrackTag">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="success">
+        <xsd:annotation>
+          <xsd:documentation>Success style</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="warning">
+        <xsd:annotation>
+          <xsd:documentation>Warning style</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="important">
+        <xsd:annotation>
+          <xsd:documentation>Important style</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+      <xsd:enumeration value="info">
+        <xsd:annotation>
+          <xsd:documentation>Information style</xsd:documentation>
+        </xsd:annotation>
+      </xsd:enumeration>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <xsd:complexType name="TrackField">
+    <xsd:attribute name="name" type="xsd:string" use="required">
+      <xsd:annotation>
+        <xsd:documentation>Name of the field</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="if" type="xsd:string">
+      <xsd:annotation>
+        <xsd:documentation>Only track the change if given condition is true (JEL expression)</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="on" type="dm:TrackEvent" default="ALWAYS">
+      <xsd:annotation>
+        <xsd:documentation>Specify on which event to track the changes</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+  </xsd:complexType>
+
+  <xsd:complexType name="TrackMessage">
+    <xsd:simpleContent>
+      <xsd:extension base="xsd:string">
+        <xsd:attribute name="if" type="xsd:string" use="required">
+          <xsd:annotation>
+            <xsd:documentation>Only use this message if given condition is true (JEL expression)</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="on" type="dm:TrackEvent" default="ALWAYS">
+          <xsd:annotation>
+            <xsd:documentation>Specify on which event to track the changes</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="tag" type="dm:TrackTag">
+          <xsd:annotation>
+            <xsd:documentation>Specify tag style, if this message is a tag.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+        <xsd:attribute name="fields" type="xsd:string">
+          <xsd:annotation>
+            <xsd:documentation>Only use this message as tag if any of the given field changed.</xsd:documentation>
+          </xsd:annotation>
+        </xsd:attribute>
+      </xsd:extension>
+    </xsd:simpleContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="Track">
+    <xsd:sequence>
+      <xsd:element name="field" type="dm:TrackField" minOccurs="0" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>Specify a field to track</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="message" minOccurs="0" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>Specify a change message</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:simpleContent >
+            <xsd:restriction base="dm:TrackMessage">
+              <xsd:minLength value="1"/>
+            </xsd:restriction>
+          </xsd:simpleContent>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+
   <xsd:complexType name="Entity" mixed="true">
     <xsd:annotation>
       <xsd:documentation>Entity represent domain model.</xsd:documentation>
@@ -692,6 +821,13 @@
       		</xsd:documentation>
       	</xsd:annotation>
       </xsd:element>
+      <xsd:element name="track" type="dm:Track" minOccurs="0">
+        <xsd:annotation>
+          <xsd:documentation>
+          Provide change tracking details.
+          </xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
     </xsd:sequence>
 
     <xsd:attribute use="required" name="name">
@@ -726,11 +862,10 @@
         </xsd:documentation>
       </xsd:annotation>
     </xsd:attribute>
-    <xsd:attribute name="lang">
+    <xsd:attribute name="lang" default="java">
       <xsd:annotation>
         <xsd:documentation>
-          Generate code in the given language (default is Java but if
-          there are any function fields then defaults to Groovy).
+          Generate code in the given target language.
         </xsd:documentation>
       </xsd:annotation>
       <xsd:simpleType>
@@ -763,6 +898,22 @@
         Specifies whether the entity should be cached if caching is enabled.
         </xsd:documentation>
       </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="persistable" type="xsd:boolean" default="true">
+      <xsd:annotation>
+        <xsd:documentation>
+        Specify whether this entity is persistable (in database).
+        Non-persistable entity classes as annotated with @MappedSuperclass and
+        can be used as base class of other entities.
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
+    <xsd:attribute name="implements" type="xsd:string">
+	<xsd:annotation>
+		<xsd:documentation>
+		Specify the list of interfaces to implement.
+		</xsd:documentation>
+	</xsd:annotation>
     </xsd:attribute>
     <xsd:attribute name="extends"  type="xsd:string">
       <xsd:annotation>

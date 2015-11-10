@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -32,24 +32,29 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 
+import com.axelor.auth.AuthUtils;
 import com.axelor.db.JPA;
 import com.axelor.db.JpaSecurity;
 import com.axelor.db.JpaSecurity.AccessType;
 import com.axelor.db.mapper.Mapper;
 import com.axelor.db.mapper.Property;
+import com.axelor.inject.Beans;
 import com.axelor.meta.MetaStore;
 import com.axelor.meta.schema.views.AbstractView;
 import com.axelor.meta.schema.views.AbstractWidget;
+import com.axelor.meta.schema.views.Dashboard;
 import com.axelor.meta.schema.views.Field;
 import com.axelor.meta.schema.views.FormInclude;
 import com.axelor.meta.schema.views.FormView;
 import com.axelor.meta.schema.views.GridView;
 import com.axelor.meta.schema.views.Notebook;
 import com.axelor.meta.schema.views.Search;
+import com.axelor.meta.schema.views.SearchFilters;
 import com.axelor.meta.schema.views.SimpleContainer;
 import com.axelor.meta.service.MetaService;
 import com.axelor.rpc.Request;
 import com.axelor.rpc.Response;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
@@ -234,7 +239,14 @@ public class ViewService extends AbstractService {
 			items = ((FormView) view).getItems();
 		}
 		if (view instanceof GridView) {
-			items = ((GridView) view).getItems();
+			GridView grid = (GridView) view;
+			items = grid.getItems();
+			if ("sequence".equals(grid.getOrderBy())) {
+				names.add("sequence");
+			}
+		}
+		if (view instanceof SearchFilters) {
+			items = ((SearchFilters) view).getItems();
 		}
 		if (items == null || items.isEmpty()) {
 			return names;
@@ -275,11 +287,44 @@ public class ViewService extends AbstractService {
 	}
 
 	@POST
+	@Path("view")
+	public Response view(Request request) {
+
+		final Map<String, Object> data = request.getData();
+		final String name = (String) data.get("name");
+		final String type = (String) data.get("type");
+
+		return view(request.getModel(), name, type);
+	}
+
+	@POST
 	@Path("view/fields")
 	public Response viewFields(Request request) {
 		final Response response = new Response();
 		response.setData(findFields(request.getModel(), request.getFields()));
 		return response;
+	}
+
+	@POST
+	@Path("view/save")
+	public Response save(Request request) {
+		final Map<String, Object> data = request.getData();
+		final ObjectMapper om = Beans.get(ObjectMapper.class);
+		try {
+			final String type = (String) data.get("type");
+			final String json = om.writeValueAsString(data);
+			AbstractView view = null;
+			switch(type) {
+			case "dashboard":
+				view = om.readValue(json, Dashboard.class);
+				break;
+			}
+			if (view != null) {
+				return service.saveView(view, AuthUtils.getUser());
+			}
+		} catch (Exception e) {
+		}
+		return null;
 	}
 
 	private Property findField(final Mapper mapper, String name) {
@@ -302,7 +347,7 @@ public class ViewService extends AbstractService {
 
 	@GET
 	@Path("chart/{name}")
-	public Response get(@PathParam("name") String name) {
+	public Response chart(@PathParam("name") String name) {
 		final MultivaluedMap<String, String> params = getUriInfo().getQueryParameters(true);
 		final Map<String, Object> context = Maps.newHashMap();
 		final Request request = new Request();
@@ -322,7 +367,13 @@ public class ViewService extends AbstractService {
 
 	@POST
 	@Path("chart/{name}")
-	public Response get(@PathParam("name") String name, Request request) {
+	public Response chart(@PathParam("name") String name, Request request) {
 		return service.getChart(name, request);
+	}
+
+	@POST
+	@Path("custom/{name}")
+	public Response dataset(@PathParam("name") String name, Request request) {
+		return service.getDataSet(name, request);
 	}
 }

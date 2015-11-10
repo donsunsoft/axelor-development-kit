@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,7 +17,6 @@
  */
 package com.axelor.gradle
 
-import org.gradle.api.Plugin
 import org.gradle.api.Project
 
 import com.axelor.gradle.tasks.GenerateCode
@@ -25,23 +24,16 @@ import com.axelor.gradle.tasks.GenerateCode
 class BasePlugin extends AbstractPlugin {
 
 	void apply(Project project) {
-        
-		project.configure(project) {
 
-			def definition = extensions.create("module", ModuleDefinition)
+		def definition = project.extensions.create("module", ModuleDefinition)
 
-			afterEvaluate {
-				checkVersion(project, definition)
-			}
+		applyCommon(project, definition)
 
-			applyCommon(project, definition)
+		project.task("generateCode", type: GenerateCode) {
+			description "Generate code for domain models from xml definitions."
+			group "Axelor"
+		}
 
-			task("generateCode", type: GenerateCode) {
-				description "Generate code for domain models from xml definitions."
-				group "Axelor"
-			}
-
-			compileJava.dependsOn "generateCode"
-        }
+		project.compileJava.dependsOn "generateCode"
     }
 }

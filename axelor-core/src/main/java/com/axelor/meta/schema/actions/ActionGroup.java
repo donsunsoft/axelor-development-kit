@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -26,11 +26,15 @@ import java.util.Map;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import com.axelor.common.ClassUtils;
 import com.axelor.common.StringUtils;
 import com.axelor.db.Model;
 import com.axelor.db.mapper.Mapper;
+import com.axelor.i18n.I18n;
 import com.axelor.meta.ActionHandler;
 import com.axelor.meta.MetaStore;
+import com.axelor.meta.loader.XMLViews;
+import com.axelor.meta.schema.views.AbstractView;
 import com.axelor.rpc.Response;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -61,6 +65,25 @@ public class ActionGroup extends ActionResumable {
 		this.actions.add(item);
 	}
 
+	/**
+	 * Validate the action sequence in the group.
+	 *
+	 */
+	public void validate() throws IllegalStateException {
+		if (actions == null || actions.isEmpty()) return;
+		int index = 0;
+		for (ActionItem item : actions) {
+			index += 1;
+			Action action = findAction(item.getName());
+			if (action instanceof ActionReport && index < actions.size()) {
+				String message = String.format(
+						I18n.get("Invalid use of action-record: %s, must be the last action."),
+						action.getName());
+				throw new IllegalStateException(message);
+			}
+		}
+	}
+
 	private String getPending(int index, String... prepend) {
 		final List<String> pending = Lists.newArrayList(prepend);
 		if ((index + 1) < actions.size()) {
@@ -85,35 +108,49 @@ public class ActionGroup extends ActionResumable {
 		String actionName = name.trim();
 
 		if (actionName.contains(":")) {
-
-			Action action;
-			String[] parts = name.split("\\:", 2);
-
-			if (parts[0].matches("grid|form|tree|portal|calendar|chart|search|html")) {
+			final String[] parts = name.split("\\:", 3);
+			if (XMLViews.isViewType(parts[0])) {
+				ActionView actionView = new ActionView();
 				ActionView.View view = new ActionView.View();
+				AbstractView xml = XMLViews.findView(null, parts[1], parts[0]);
+
 				view.setType(parts[0]);
 				view.setName(parts[1]);
-				action = new ActionView();
-				((ActionView) action).setViews(ImmutableList.of(view));
-			} else {
-				ActionMethod.Call method = new ActionMethod.Call();
-				method.setController(parts[0]);
-				method.setMethod(parts[1]);
-				action = new ActionMethod();
-				((ActionMethod) action).setCall(method);
+
+				actionView.setViews(ImmutableList.of(view));
+
+				if (parts.length == 3) {
+					Class<?> model = ClassUtils.findClass(parts[2]);
+					actionView.setModel(model.getName());
+					xml = XMLViews.findView(model.getName(), parts[1], parts[0]);
+				}
+				if (xml != null) {
+					actionView.setTitle(xml.getTitle());
+					if (actionView.getModel() == null) {
+						actionView.setModel(xml.getModel());
+					}
+				}
+				return actionView;
+			}
+			ActionMethod.Call method = new ActionMethod.Call();
+			method.setController(parts[0]);
+			method.setMethod(parts[1]);
+			ActionMethod action = new ActionMethod();
+			action.setCall(method);
+			return action;
+		}
+
+		if (actionName.indexOf("[") > -1 && actionName.endsWith("]")) {
+			String idx = actionName.substring(actionName.lastIndexOf('[') + 1, actionName.lastIndexOf(']'));
+			actionName = actionName.substring(0, actionName.lastIndexOf('['));
+			int index = Integer.parseInt(idx);
+			log.debug("continue action-validate: {}", actionName);
+			log.debug("continue at: {}", index);
+			Action action = MetaStore.getAction(actionName);
+			if (action instanceof ActionResumable) {
+				return ((ActionResumable) action).resumeAt(index);
 			}
 			return action;
-		} else if (actionName.indexOf("[") > -1 && actionName.endsWith("]")) {
-				String idx = actionName.substring(actionName.lastIndexOf('[') + 1, actionName.lastIndexOf(']'));
-				actionName = actionName.substring(0, actionName.lastIndexOf('['));
-				int index = Integer.parseInt(idx);
-				log.debug("continue action: {}", actionName);
-				log.debug("continue at: {}", index);
-				Action action = MetaStore.getAction(actionName);
-				if (action instanceof ActionResumable) {
-					return ((ActionResumable) action).resumeAt(index);
-				}
-				return action;
 		}
 
 		return MetaStore.getAction(actionName);
@@ -133,6 +170,9 @@ public class ActionGroup extends ActionResumable {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public Object evaluate(ActionHandler handler) {
 
+		// validate the action group
+		this.validate();
+
 		List<Object> result = Lists.newArrayList();
 		Iterator<ActionItem> iter = actions.iterator();
 
@@ -147,7 +187,7 @@ public class ActionGroup extends ActionResumable {
 
 			log.debug("action: {}", name);
 
-			if ("save".equals(name) || "validate".equals(name)) {
+			if ("save".equals(name) || "validate".equals(name) || "close".equals(name)) {
 				if (!element.test(handler)) {
 					log.debug("action '{}' doesn't meet the condition: {}", name, element.getCondition());
 					continue;
@@ -234,7 +274,8 @@ public class ActionGroup extends ActionResumable {
                 	last.containsKey("alert") ||
                 	last.containsKey("error") ||
                 	last.containsKey("save") ||
-                	last.containsKey("validate")) {
+                	last.containsKey("validate") ||
+                	last.containsKey("close")) {
             		String previous = (String) last.get("pending");
             		String pending = this.getPending(i, previous);
             		last.put("pending", pending);

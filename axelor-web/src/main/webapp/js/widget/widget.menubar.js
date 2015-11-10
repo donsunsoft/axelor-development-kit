@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,7 +17,9 @@
  */
 (function() {
 
-var module = angular.module('axelor.ui');
+"use strict";
+
+var ui = angular.module('axelor.ui');
 
 MenuBarCtrl.$inject = ['$scope', '$element'];
 function MenuBarCtrl($scope, $element) {
@@ -43,7 +45,7 @@ function MenuBarCtrl($scope, $element) {
 	};
 }
 
-module.directive('uiMenuBar', function() {
+ui.directive('uiMenuBar', function() {
 
 	return {
 		replace: true,
@@ -64,11 +66,11 @@ module.directive('uiMenuBar', function() {
 
 		template:
 			"<ul class='nav menu-bar'>" +
-				"<li class='menu dropdown button-menu' ng-class='{\"button-menu\": menu.isButton}' ng-repeat='menu in menus'>" +
-					"<a href='' class='dropdown-toggle btn' ng-class='{\"btn\": menu.isButton}' data-toggle='dropdown' ng-click='onMenuClick($event)'>" +
-						"<img ng-if='isImage(menu)' ng-src='{{menu.icon}}'> " +
-						"<i class='fa {{menu.icon}}' ng-if='isIcon(menu)'></i> " +
-						"<span ng-show='canShowTitle(menu)'>{{menu.title}}</span> " +
+				"<li class='menu dropdown button-menu' ng-class='::{\"button-menu\": menu.isButton}' ng-repeat='menu in ::menus'>" +
+					"<a href='' class='dropdown-toggle btn' ng-class='::{\"btn\": menu.isButton}' data-toggle='dropdown' ng-click='onMenuClick($event)'>" +
+						"<img ng-if='::isImage(menu)' ng-src='{{menu.icon}}'> " +
+						"<i class='fa {{::menu.icon}}' ng-if='::isIcon(menu)'></i> " +
+						"<span ng-show='::canShowTitle(menu)'>{{::menu.title}}</span> " +
 						"<b class='caret'></b>" +
 					"</a>" +
 					"<ul ui-menu='menu'></ul>" +
@@ -77,7 +79,7 @@ module.directive('uiMenuBar', function() {
 	};
 });
 
-module.directive('uiMenu', function() {
+ui.directive('uiMenu', function() {
 
 	return {
 		replace: true,
@@ -90,12 +92,12 @@ module.directive('uiMenu', function() {
 		},
 		template:
 			"<ul class='dropdown-menu'>" +
-				"<li ng-repeat='item in menu.items' ui-menu-item='item'>" +
+				"<li ng-repeat='item in ::menu.items' ui-menu-item='item'>" +
 			"</ul>"
 	};
 });
 
-module.directive('uiMenuItem', ['$compile', 'ActionService', function($compile, ActionService) {
+ui.directive('uiMenuItem', ['$compile', 'ActionService', function($compile, ActionService) {
 
 	return {
 		replace: true,
@@ -123,7 +125,7 @@ module.directive('uiMenuItem', ['$compile', 'ActionService', function($compile, 
 			scope.isRequired = function(){};
 			scope.isValid = function(){};
 
-			var attrs = {
+			attrs = {
 				hidden: false,
 				readonly: false
 			};
@@ -188,7 +190,7 @@ module.directive('uiMenuItem', ['$compile', 'ActionService', function($compile, 
 	};
 }]);
 
-module.directive('uiToolbarAdjust', function() {
+ui.directive('uiToolbarAdjust', function() {
 
 	return function (scope, element, attrs) {
 
@@ -262,4 +264,4 @@ module.directive('uiToolbarAdjust', function() {
 	};
 });
 
-}).call(this);
+})();

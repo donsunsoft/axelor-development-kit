@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -36,6 +36,7 @@ import org.apache.commons.cli.ParseException;
 
 import com.axelor.shell.core.annotations.CliCommand;
 import com.axelor.shell.core.annotations.CliOption;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 
 public class Target {
@@ -212,7 +213,7 @@ public class Target {
 	
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 			.add("method", method)
 			.toString();
 	}

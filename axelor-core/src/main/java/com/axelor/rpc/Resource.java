@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,11 +17,14 @@
  */
 package com.axelor.rpc;
 
+import static com.axelor.common.StringUtils.isBlank;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,10 +39,12 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.OptimisticLockException;
 
 import org.hibernate.StaleObjectStateException;
-import org.hibernate.proxy.HibernateProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.axelor.auth.AuthUtils;
+import com.axelor.common.Inflector;
+import com.axelor.db.EntityHelper;
 import com.axelor.db.JPA;
 import com.axelor.db.JpaRepository;
 import com.axelor.db.JpaSecurity;
@@ -52,9 +57,13 @@ import com.axelor.db.mapper.Property;
 import com.axelor.db.mapper.PropertyType;
 import com.axelor.i18n.I18n;
 import com.axelor.i18n.I18nBundle;
+import com.axelor.inject.Beans;
+import com.axelor.meta.MetaPermissions;
+import com.axelor.meta.MetaStore;
+import com.axelor.meta.db.MetaAction;
 import com.axelor.meta.db.MetaTranslation;
+import com.axelor.meta.schema.views.Selection;
 import com.axelor.rpc.filter.Filter;
-import com.google.common.base.CaseFormat;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -63,8 +72,8 @@ import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
-import com.google.inject.Injector;
 import com.google.inject.TypeLiteral;
 import com.google.inject.persist.Transactional;
 
@@ -192,40 +201,58 @@ public class Resource<T extends Model> {
 
 	private List<String> getSortBy(Request request) {
 
-		List<String> sortBy = Lists.newArrayList();
-		Mapper mapper = Mapper.of(model);
+		final List<String> sortBy = Lists.newArrayList();
+		final List<String> sortOn = Lists.newArrayList();
+		final Mapper mapper = Mapper.of(model);
+
+		boolean unique = true;
+		boolean desc = true;
 
 		if (request.getSortBy() != null) {
-			for(String spec : request.getSortBy()) {
-				String name = spec;
-				if (name.startsWith("-")) {
-					name = name.substring(1);
-				}
-				Property property = mapper.getProperty(name);
-				if (property != null && property.isReference()) {
-					// use name field to sort many-to-one column
-					Mapper m = Mapper.of(property.getTarget());
-					Property p = m.getNameField();
-					if (p != null) {
-						spec = spec + "." + p.getName();
-					}
-				}
-				sortBy.add(spec);
+			sortOn.addAll(request.getSortBy());
+		}
+		if (sortOn.isEmpty()) {
+			Property nameField = mapper.getNameField();
+			if (nameField == null) {
+				nameField = mapper.getProperty("name");
+			}
+			if (nameField == null) {
+				nameField = mapper.getProperty("code");
+			}
+			if (nameField != null) {
+				sortOn.add(nameField.getName());
 			}
 		}
 
-		if (sortBy.size() > 0) {
-			return sortBy;
+		for(String spec : sortOn) {
+			String name = spec;
+			if (name.startsWith("-")) {
+				name = name.substring(1);
+			} else {
+				desc = false;
+			}
+			Property property = mapper.getProperty(name);
+			if (property == null || property.isPrimary()) {
+				// dotted field or primary key
+				sortBy.add(spec);
+				continue;
+			}
+			if (property.isReference()) {
+				// use name field to sort many-to-one column
+				Mapper m = Mapper.of(property.getTarget());
+				Property p = m.getNameField();
+				if (p != null) {
+					spec = spec + "." + p.getName();
+				}
+			}
+			if (!property.isUnique()) {
+				unique = false;
+			}
+			sortBy.add(spec);
 		}
 
-		if (mapper.getNameField() != null) {
-			sortBy.add(mapper.getNameField().getName());
-			return sortBy;
-		}
-
-		if (mapper.getProperty("code") != null) {
-			sortBy.add("code");
-			return sortBy;
+		if (!unique && (!sortBy.contains("id") || !sortBy.contains("-id"))) {
+			sortBy.add(desc ? "-id" : "id");
 		}
 
 		return sortBy;
@@ -256,19 +283,15 @@ public class Resource<T extends Model> {
 		} else if (filter != null) {
 			query = filter.build(model);
 		}
-		
-		List<String> sortBy = getSortBy(request);
 
-		if (!sortBy.contains("id") || !sortBy.contains("-id")) {
-			sortBy.add("id");
-		}
-		for(String spec : sortBy) {
+		for(String spec : getSortBy(request)) {
 			query = query.order(spec);
 		}
 
 		return query;
 	}
 
+	@SuppressWarnings("all")
 	public Response search(Request request) {
 
 		security.get().check(JpaSecurity.CAN_READ, model);
@@ -302,23 +325,27 @@ public class Resource<T extends Model> {
 		}
 
 		LOG.debug("Records found: {}", data.size());
+		
+		final Repository repo = JpaRepository.of(model);
+		final List<Object> jsonData = new ArrayList<>();
 
-		data = Lists.transform(data, new Function<Object, Object>() {
-			@Override
-			public Object apply(Object input) {
-				if (input instanceof Model) {
-					return toMap((Model) input);
-				}
-				return input;
-			};
-		});
+		for (Object item : data) {
+			if (item instanceof Model) {
+				item = toMap(item);
+			}
+			if (item instanceof Map) {
+				item = repo.populate((Map) item, request.getContext());
+				Translator.applyTranslatables((Map) item, model);
+			}
+			jsonData.add(item);
+		}
 
 		try {
 			// check for children (used by tree view)
-			doChildCount(request, data);
+			doChildCount(request, jsonData);
 		} catch (NullPointerException | ClassCastException e) {};
 
-		response.setData(data);
+		response.setData(jsonData);
 		response.setOffset(offset);
 		response.setStatus(Response.STATUS_SUCCESS);
 
@@ -366,23 +393,49 @@ public class Resource<T extends Model> {
 		for (Object item : q.getResultList()) {
 			counts.put(((Map)item).get("id"), ((Map)item).get("count"));
 		}
-		
+
 		for (Object item : result) {
 			((Map) item).put("_children", counts.get(((Map) item).get("id")));
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	public void export(Request request, Writer writer) throws IOException {
 		security.get().check(JpaSecurity.CAN_READ, model);
 		LOG.debug("Exporting '{}' with {}", model.getName(), request.getData());
 
 		List<String> fields = request.getFields();
-		List<String> header = Lists.newArrayList();
-		List<String> names = Lists.newArrayList();
-		Map<Integer, Map<String, String>> selection = Maps.newHashMap();
+		List<String> header = new ArrayList<>();
+		List<String> names = new ArrayList<>();
+		Map<Integer, Map<String, String>> selection = new HashMap<>();
 
 		Mapper mapper = Mapper.of(model);
+		MetaPermissions perms = Beans.get(MetaPermissions.class);
+
+		if (fields == null) {
+			fields = new ArrayList<>();
+		}
+		if (fields.isEmpty()) {
+			fields.add("id");
+			try {
+				fields.add(mapper.getNameField().getName());
+			} catch (Exception e) {}
+
+			for (Property property : mapper.getProperties()) {
+				if (property.isPrimary() ||
+					property.isTransient() ||
+					property.isVersion() ||
+					property.isCollection() ||
+					property.isPassword() ||
+					property.getType() == PropertyType.BINARY) {
+					continue;
+				}
+				String name = property.getName();
+				if (fields.contains(name) || name.matches("^(created|updated)(On|By)$")) {
+					continue;
+				}
+				fields.add(name);
+			}
+		}
 
 		for(String field : fields) {
 			Iterator<String> iter = Splitter.on(".").split(field).iterator();
@@ -390,19 +443,28 @@ public class Resource<T extends Model> {
 			while(iter.hasNext() && prop != null) {
 				prop = Mapper.of(prop.getTarget()).getProperty(iter.next());
 			}
-			if (prop == null || prop.isCollection()) {
+			if (prop == null ||
+				prop.isCollection() ||
+				prop.isTransient() ||
+				prop.getType() == PropertyType.BINARY) {
 				continue;
 			}
 
 			String name = prop.getName();
 			String title = prop.getTitle();
+			String model = getModel().getName();
+			if (prop.isReference()) {
+				model = prop.getTarget().getName();
+			}
+			if (!perms.canExport(AuthUtils.getUser(), model, name)) {
+				continue;
+			}
 			if(iter != null) {
 				name = field;
 			}
 
-			if (title == null) {
-				title = CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, prop.getName());
-				title = humanize(title);
+			if (isBlank(title)) {
+				title = Inflector.getInstance().humanize(prop.getName());
 			}
 
 			if (prop.isReference()) {
@@ -411,20 +473,15 @@ public class Resource<T extends Model> {
 					continue;
 				}
 				name = name + '.' + prop.getName();
-			} else if(prop.getSelection() != null && !"".equals(prop.getSelection().trim())) {
-				javax.persistence.Query q = JPA.em().createQuery("SELECT new List(self.value, self.title) FROM MetaSelectItem self "
-						+ "JOIN self.select metaSelect "
-						+ "WHERE metaSelect.name = ?1");
-				q.setParameter(1, prop.getSelection());
-
-				List<List<?>> result = q.getResultList();
-				if (result == null || result.isEmpty()) {
+			} else if(!isBlank(prop.getSelection())) {
+				List<Selection.Option> options = MetaStore.getSelectionList(prop.getSelection());
+				if (options == null || options.isEmpty()) {
 					continue;
 				}
 
-				Map<String, String> map = Maps.newHashMap();
-				for (List<?> object : result) {
-					map.put(object.get(0).toString(), object.get(1).toString());
+				Map<String, String> map = new HashMap<>();
+				for (Selection.Option option : options) {
+					map.put(option.getValue(), option.getLocalizedTitle());
 				}
 				selection.put(header.size(), map);
 			}
@@ -475,14 +532,6 @@ public class Resource<T extends Model> {
 		return '"' + value + '"';
 	}
 
-	private String humanize(String value) {
-		if (value.endsWith("_id")) value = value.substring(0, value.length() - 3);
-		if (value.endsWith("_set")) value = value.substring(0, value.length() - 5);
-		if (value.endsWith("_list")) value = value.substring(0, value.length() - 6);
-		return value.substring(0, 1).toUpperCase() +
-			   value.substring(1).replaceAll("_+", " ");
-	}
-
 	public Response read(long id) {
 		security.get().check(JpaSecurity.CAN_READ, model, id);
 		Response response = new Response();
@@ -501,7 +550,8 @@ public class Resource<T extends Model> {
 		security.get().check(JpaSecurity.CAN_READ, model, id);
 
 		final Response response = new Response();
-		final Model entity = JPA.find(model, id);
+		final Repository<?> repository = JpaRepository.of(model);
+		final Model entity = repository.find(id);
 
 		response.setStatus(Response.STATUS_SUCCESS);
 		if (entity == null) {
@@ -512,7 +562,17 @@ public class Resource<T extends Model> {
 		final String[] fields = request.getFields().toArray(new String[]{});
 		final Map<String, Object> values = mergeRelated(request, entity, toMap(entity, fields));
 
-		data.add(values);
+		// special case for User/Group objects
+		if (values.get("homeAction") != null) {
+			MetaAction act = JpaRepository.of(MetaAction.class).all()
+					.filter("self.name = ?", values.get("homeAction"))
+					.fetchOne();
+			if (act != null) {
+				values.put("__actionSelect", toMapCompact(act));
+			}
+		}
+
+		data.add(repository.populate(values, request.getContext()));
 		response.setData(data);
 		return response;
 	}
@@ -593,6 +653,8 @@ public class Resource<T extends Model> {
 
 		for(Object record : records) {
 
+			record = (Map) repository.validate((Map) record, request.getContext());
+
 			Long id = findId((Map) record);
 
 			if (id == null || id <= 0L) {
@@ -601,6 +663,9 @@ public class Resource<T extends Model> {
 
 			Map<String, Object> orig = (Map) ((Map) record).get("_original");
 			JPA.verify(model, orig);
+
+			// save translatable values and remove them from record
+			Translator.saveTranslatables((Map) record, model);
 
 			Model bean = JPA.edit(model, (Map) record);
 			id = bean.getId();
@@ -614,12 +679,12 @@ public class Resource<T extends Model> {
 				bean = repository.save(bean);
 			}
 
-			data.add(bean);
-			
 			// if it's a translation object, invalidate cache
 			if (bean instanceof MetaTranslation) {
 				I18nBundle.invalidate();
 			}
+
+			data.add(repository.populate(toMap(bean), request.getContext()));
 		}
 
 		response.setData(data);
@@ -698,7 +763,11 @@ public class Resource<T extends Model> {
 		for(Object record : records) {
 			Map map = (Map) record;
 			Long id = Longs.tryParse(map.get("id").toString());
-			Object version = map.get("version");
+			Integer version = null;
+			try {
+				version = Ints.tryParse(map.get("version").toString());
+			} catch (Exception e) {
+			}
 
 			security.get().check(JpaSecurity.CAN_REMOVE, model, id);
 			Model bean = JPA.find(model, id);
@@ -745,9 +814,6 @@ public class Resource<T extends Model> {
 		return response;
 	}
 
-	@Inject
-	private Injector injector;
-
 	public ActionResponse action(ActionRequest request) {
 
 		ActionResponse response = new ActionResponse();
@@ -764,7 +830,7 @@ public class Resource<T extends Model> {
 		try {
 			Class<?> klass = Class.forName(controller);
 			Method m = klass.getDeclaredMethod(method, ActionRequest.class, ActionResponse.class);
-			Object obj = injector.getInstance(klass);
+			Object obj = Beans.get(klass);
 
 			m.setAccessible(true);
 			m.invoke(obj, new Object[] { request, response });
@@ -791,7 +857,7 @@ public class Resource<T extends Model> {
 
 		Mapper mapper = Mapper.of(model);
 		Map<String, Object> data = request.getData();
-		
+
 		Property property = null;
 		try {
 			property = mapper.getProperty(request.getFields().get(0));
@@ -835,9 +901,7 @@ public class Resource<T extends Model> {
 			return null;
 		}
 
-		if (bean instanceof HibernateProxy) {
-			bean = ((HibernateProxy) bean).getHibernateLazyInitializer().getImplementation();
-		}
+		bean = EntityHelper.getEntity(bean);
 
 		if (fields == null) {
 			fields = Maps.newHashMap();
@@ -879,7 +943,7 @@ public class Resource<T extends Model> {
 			String name = prop.getName();
 			PropertyType type = prop.getType();
 
-			if (type == PropertyType.BINARY && !name.toLowerCase().matches(".*(image|photo|picture).*")) {
+			if (type == PropertyType.BINARY) {
 				continue;
 			}
 
@@ -923,6 +987,11 @@ public class Resource<T extends Model> {
 				}
 				value = items;
 			}
+
+			if (prop.isTranslatable() && value instanceof String) {
+				value = Translator.getTranslation(prop, (String) value);
+			}
+
 			result.put(name, value);
 		}
 

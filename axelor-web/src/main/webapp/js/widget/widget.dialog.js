@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-angular.module('axelor.ui').directive('uiDialog', function() {
+(function() {
+
+"use strict";
+
+var ui = angular.module('axelor.ui');
+
+ui.directive('uiDialog', function() {
 	return {
 		restrict: 'EA',
 		link: function(scope, element, attrs) {
@@ -26,9 +32,10 @@ angular.module('axelor.ui').directive('uiDialog', function() {
 			var onOpen = scope.$eval(attrs.onOpen);
 			var onClose = scope.$eval(attrs.onClose);
 			var onOK = scope.$eval(attrs.onOk);
-			var buttons = [];
-			
-			if(_.isUndefined(onClose) || _.isFunction(onClose)){
+			var cssClass = attrs.css;
+			var buttons = scope.$eval(attrs.buttons) || [];
+
+			if(_.isEmpty(buttons) || (_.isUndefined(onClose) || _.isFunction(onClose))) {
 				buttons.push({
 			    	text: _t('Close'),
 			    	'class': 'btn button-close',
@@ -53,7 +60,7 @@ angular.module('axelor.ui').directive('uiDialog', function() {
 			}
 			
 			var dialog = element.dialog({
-				dialogClass: 'ui-dialog-responsive',
+				dialogClass: 'ui-dialog-responsive ' + (cssClass || ''),
 				resizable: resizable,
 				draggable: true,
 				autoOpen: false,
@@ -139,3 +146,5 @@ angular.module('axelor.ui').directive('uiDialog', function() {
 		}
 	};
 });
+
+})();

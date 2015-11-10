@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -88,6 +88,9 @@ public class ActionView extends Action {
 	@XmlAttribute
 	private String icon;
 
+	@XmlAttribute
+	private Boolean home;
+
 	@XmlElement
 	private String domain;
 
@@ -110,8 +113,16 @@ public class ActionView extends Action {
 		return title;
 	}
 
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
 	public String getIcon() {
 		return icon;
+	}
+
+	public Boolean getHome() {
+		return home;
 	}
 
 	public String getDomain() {
@@ -173,6 +184,11 @@ public class ActionView extends Action {
 						value = JPA.copy((Model)value, true);
 					}
 					context.put(ctx.getName(), value);
+
+					// make it available to the evaluation context
+					if (ctx.getName().startsWith("_")) {
+						handler.getContext().put(ctx.getName(), value);
+					}
 				}
 			}
 		}
@@ -238,11 +254,11 @@ public class ActionView extends Action {
 	public static final class ActionViewBuilder {
 
 		private ActionView view = new ActionView();
+		private Map<String, Object> context = Maps.newHashMap();
 
 		private ActionViewBuilder(String title) {
 			view.title = title;
 			view.views = Lists.newArrayList();
-			view.contexts = Lists.newArrayList();
 			view.params = Lists.newArrayList();
 		}
 		
@@ -278,11 +294,8 @@ public class ActionView extends Action {
 			return this;
 		}
 		
-		public ActionViewBuilder context(String key, String value) {
-			Context item = new Context();
-			item.setName(key);
-			item.setExpression(value);
-			view.contexts.add(item);
+		public ActionViewBuilder context(String key, Object value) {
+			this.context.put(key, value);
 			return this;
 		}
 		
@@ -310,7 +323,6 @@ public class ActionView extends Action {
 		 */
 		public Map<String, Object> map() {
 			Map<String, Object> result = Maps.newHashMap();
-			Map<String, Object> context = Maps.newHashMap();
 			Map<String, Object> params = Maps.newHashMap();
 			List<Object> items = Lists.newArrayList();
 			String type = null;
@@ -329,10 +341,6 @@ public class ActionView extends Action {
 				type = "grid";
 				items.add(ImmutableMap.of("type", "grid"));
 				items.add(ImmutableMap.of("type", "form"));
-			}
-
-			for(Context ctx : view.contexts) {
-				context.put(ctx.getName(), ctx.getExpression());
 			}
 
 			for(Param param : view.params) {

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function () {
+(function() {
+
+	"use strict";
+	
+	// create global axelor namespace exists
+	window.axelor = window.axelor || {};
+	window.axelor.config = {};
 
 	var module = angular.module('axelor.ng', []);
 
@@ -23,13 +29,13 @@
 
 		$provide.decorator('$rootScope', ['$delegate', '$exceptionHandler', '$injector', function ($rootScope, $exceptionHandler, $injector) {
 			
-			var __proto__ = Object.getPrototypeOf($rootScope),
+			var __orig__ = Object.getPrototypeOf($rootScope),
 				__super__ = {},
 				__custom__ = {};
 
-			for (var name in __proto__) {
-				if (angular.isFunction(__proto__[name])) {
-					__super__[name] = __proto__[name];
+			for (var name in __orig__) {
+				if (angular.isFunction(__orig__[name])) {
+					__super__[name] = __orig__[name];
 				}
 			}
 
@@ -58,6 +64,9 @@
 					return this.$timeout(callback.bind(context), wait);
 				}
 			};
+
+			// expose _t() to use in template
+			__custom__._t = _t;
 
 			__custom__.$actionPromises = [];
 			__custom__.waitForActions = function waitForActions(callback, wait) {
@@ -128,7 +137,8 @@
 
 			__custom__.$$canWatch = function () {
 				if (!this.$$watchInitialized || !this.$$watchChecker) {
-					return this.$$watchInitialized = true;
+					this.$$watchInitialized = true;
+					return true;
 				}
 				if (this.$$shouldWatch === true) {
 					return true;
@@ -137,7 +147,8 @@
 				if (parent.$$childCanWatch !== undefined && !parent.$$childCanWatch) {
 					return false;
 				}
-				return this.$$childCanWatch = this.$$watchChecker(this);
+				this.$$childCanWatch = this.$$watchChecker(this);
+				return this.$$childCanWatch;
 			};
 
 			__custom__.$watchChecker = function (checker) {
@@ -182,7 +193,7 @@
 				return __super__.$apply.apply(this, arguments);
 			};
 
-			angular.extend(__proto__, __custom__);
+			angular.extend(__orig__, __custom__);
 			angular.extend($rootScope, __custom__);
 
 			$rootScope.$$watchChecker = null;
@@ -191,4 +202,4 @@
 		}]);
 	}]);
 	
-}());
+})();

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -112,4 +112,34 @@ public interface Repository<T extends Model> {
 	 *
 	 */
 	void flush();
+
+	/**
+	 * Validate the given json map before persisting.
+	 *
+	 * <p>
+	 * This method is called before the json map is converted to model object.
+	 * </p>
+	 *
+	 * @param json
+	 *            the json map to validate
+	 * @param context
+	 *            the context
+	 * @return validated json map
+	 */
+	Map<String, Object> validate(Map<String, Object> json, Map<String, Object> context);
+
+	/**
+	 * Populate the given json map with additional data.
+	 * 
+	 * <p>
+	 * This method is called before returning the json data as response.
+	 * </p>
+	 *
+	 * @param json
+	 *            the json map to populate
+	 * @param context
+	 *            the context
+	 * @return the json map itself
+	 */
+	Map<String, Object> populate(Map<String, Object> json, Map<String, Object> context);
 }

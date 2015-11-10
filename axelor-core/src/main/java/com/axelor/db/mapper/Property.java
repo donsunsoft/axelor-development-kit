@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -121,6 +121,8 @@ public class Property {
 	private boolean nameColumn;
 
 	private boolean sequence;
+
+	private boolean translatable;
 
 	private transient String sequenceName;
 
@@ -257,6 +259,7 @@ public class Property {
 				selection = w.selection();
 				password = w.password();
 				massUpdate = w.massUpdate();
+				translatable = w.translatable();
 
 				if (w.multiline() && type == PropertyType.STRING) {
 					type = PropertyType.TEXT;
@@ -441,7 +444,11 @@ public class Property {
 	public boolean isSequence() {
 		return sequence;
 	}
-	
+
+	public boolean isTranslatable() {
+		return translatable;
+	}
+
 	public String getSequenceName() {
 		return sequenceName;
 	}

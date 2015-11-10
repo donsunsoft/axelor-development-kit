@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -37,11 +37,11 @@ import javax.validation.constraints.NotNull;
 
 import org.joda.time.LocalDate;
 
+import com.axelor.db.EntityHelper;
 import com.axelor.db.JpaModel;
 import com.axelor.db.annotations.NameColumn;
 import com.axelor.db.annotations.VirtualColumn;
 import com.axelor.db.annotations.Widget;
-import com.axelor.db.internal.EntityHelper;
 import com.google.common.collect.Lists;
 
 @Entity

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2012-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -24,25 +24,23 @@
 
 .slickgrid .slick-header,
 .slickgrid .slick-header-column {
-	
 	color: #333;
-	text-shadow: 0 1px 1px rgba(255, 255, 255, 0.75);
+	background: #fff;
+	background-image: none;
+}
 
-	background-color: #f5f5f5;
-  
-	background-image: -moz-linear-gradient(top, #F5F5F5, #E6E6E6);
-	background-image: -ms-linear-gradient(top, #F5F5F5, #E6E6E6);
-	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#F5F5F5), to(#E6E6E6));
-	background-image: -webkit-linear-gradient(top, #F5F5F5, #E6E6E6);
-	background-image: -o-linear-gradient(top, #F5F5F5, #E6E6E6);
-	background-image: linear-gradient(top, #F5F5F5, #E6E6E6);
-	background-repeat: repeat-x;
-	
-	-webkit-box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
-	   -moz-box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
-	        box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
+.slickgrid .slick-header {
+	border: 0;
+	border-top: 1px solid #ddd;
+	border-bottom: 1px solid #ddd;
+}
 
-	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+.slickgrid .slick-header-column {
+	border-right: 1px solid #ddd;
+}
+
+.slickgrid .slick-header-column:last-child {
+	border-right-color: transparent;
 }
 
 .slickgrid-empty .slick-header,
@@ -59,55 +57,85 @@
 	        box-sizing: content-box;
 }
 
+.slick-row {
+	background: #f9f9f9;
+}
 .slick-row.odd {
-  background: #F9F9F9;
+  	background: #fff;
 }
 
 .slick-row:hover {
-  background: #F5F5F5;
+  	background: #f5f5f5;
 }
 
 .slick-row .slick-cell {
-	border-bottom: 1px dotted silver;
+	border: 0;
+	border-bottom: 1px solid #e7eaec;
+	padding: 2px 8px;
 }
 
-.slick-cell {
+.slick-row .slick-cell {
+	box-sizing: border-box;
 	line-height: 20px;
+	height: 100% !important;
 }
 
-.slick-cell.selected {
-  background-color: #DFE8F6;
+.slick-row .slick-cell.selected {
+  	background-color: #abb9d3;
 }
 
-.slick-cell.active {
-  border-color: silver;
-  border-style: solid;
+.slick-row .slick-cell.selected.active::after {
+	content: " ";
+	display: block;
+	position: absolute;
+	top: 0; right: 0; bottom: 0; left: 0;
+	border: 1px dotted #76849c;
+	z-index: -1;
+}
+
+.slickgrid-editable .slick-row.active .slick-cell-editable:before {
+	content: " ";
+	display: block;
+	position: absolute;
+	top: 0; right: 0; bottom: 0; left: 0;
+	border: 1px solid #8080ff;
+	background-color: #fff;
+	z-index: -1;
+}
+
+.slickgrid-editable .slick-row.active .slick-cell-required:before {
+	background-color: #d2d2ff;
 }
 
 .slick-headerrow {
-	height: 26px;
-	border-top: none !important;
+	height: 24px;
+	border: 0 !important;
+	border-bottom: 1px solid #ddd !important;
+	background: #fff !important;
 	background-image: none !important;
 }
 
 .slick-headerrow-columns .slick-headerrow-column {
-	background: #F9F9F9;
+	background: #f9f9f9;
 }
 
 .slick-headerrow-column {
 	height: 24px;
-	border-left: none !important;
-	border-top: none !important;
-	border-bottom: none !important;
+	border: none !important;
+	border-right: 1px solid #ddd !important;
 	background: #f5f5f5;
 	-webkit-box-sizing: border-box;
 	   -moz-box-sizing: border-box;
 	     box-sizing: border-box;
 }
 
+.slick-headerrow-column:last-child {
+	border-right: transparent !important;
+}
+
 .slick-headerrow input {
 	margin: 0;
-	padding: 0;
+	padding: 2px 8px;
 	width: 100%;
 	height: 100%;
 	outline: 0;
@@ -129,6 +157,8 @@
 .slick-header-column.ui-state-default {
 	height: inherit;
 	line-height: inherit;
+	padding: 4px 8px;
+	font-weight: 600;
 }
 
 .slick-headerrow-column.ui-state-default {
@@ -138,7 +168,6 @@
 .slick-cell.editable {
 	background: white;
 	padding: 0;
-	height: 24px !important;
 }
 
 .slick-cell input,
@@ -165,7 +194,7 @@
 }
 
 .slick-cell input {
-	padding-left: 2px !important;
+	padding-left: 6px !important;
 }
 
 .slick-cell textarea {
@@ -189,12 +218,17 @@
 	margin-top: 0 !important;
 }
 
+.slick-cell .ibox {
+	width: auto;
+	margin-top: 2px !important;
+}
+
 .slick-editor-dropdown {
 	box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 	min-width: 250px;
 }
 
-.ui-dialog-content > .slickgrid {
+.ui-dialog [ui-dialog] > .slickgrid {
 	position: absolute;
 	top: 4px; right: 4px; bottom: 4px; left: 4px;
 }
@@ -287,7 +321,7 @@
 
 .slick-group-text,
 .slick-group-count {
-	font-weight: bold;
+	font-weight: 600;
 }
 
 .slick-group-count {
@@ -299,7 +333,7 @@
 }
 
 .slick-group-totals {
-	font-weight: bold;
+	font-weight: 600;
 }
 
 .slick-group-totals,
@@ -346,14 +380,6 @@
 .slick-header-menuitem:hover {
 	color: #fff;
 	background-color: #0081c2;
-	
-	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#0088cc), to(#0077b3));
-	background-image: -webkit-linear-gradient(top, #0088cc, #0077b3);
-	background-image:    -moz-linear-gradient(top, #0088cc, #0077b3);
-	background-image:      -o-linear-gradient(top, #0088cc, #0077b3);
-	background-image:         linear-gradient(to bottom, #0088cc, #0077b3);
-	
-	background-repeat: repeat-x;
 }
 
 .slick-header-menusep {
@@ -372,9 +398,19 @@
 	color: #0088cc;
 }
 
-.slick-cell.edit-icon i {
-	padding: 4px 7px;
+.slick-cell.edit-icon i,
+.slick-cell i.slick-icon {
 	cursor: pointer;
+}
+
+.slick-cell.move-icon {
+	cursor: move;
+}
+.panel-related.readonly .slick-cell.move-icon {
+	cursor: default;
+}
+.panel-related.readonly .slick-cell.move-icon::before {
+	content: "";
 }
 
 .slickgrid-empty-text {
@@ -388,15 +424,4 @@
 	width: 100%;
 	font-weight: 400;
 	text-align: center;
-}
-
-.grid-view .slickgrid-editable .slick-row.active .slick-cell-editable,
-.inline-editable.editable .slickgrid-editable .slick-row.active .slick-cell-editable {
-	border: 1px solid #8080FF !important;
-	background-color: #fff;
-}
-
-.grid-view .slickgrid-editable .slick-row.active .slick-cell-required,
-.inline-editable.editable .slickgrid-editable .slick-row.active .slick-cell-required {
-	background-color: #D2D2FF;
 }

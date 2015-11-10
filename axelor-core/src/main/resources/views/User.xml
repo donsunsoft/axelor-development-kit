@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <object-views xmlns="http://axelor.com/xml/ns/object-views"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_3.0.xsd">
+  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_4.0.xsd">
 
   <selection name="select.language">
     <option value="en">English</option>
@@ -26,8 +26,9 @@
       <field name="language"/>
       <panel stacked="true">
         <field name="homeAction" hidden="true" x-bind="{{__actionSelect.name}}"/>
-        <field name="__actionSelect" title="Action" widget="SuggestBox" canNew="false" target="com.axelor.meta.db.MetaAction" target-name="name" domain="self.type = 'action-view'"/>
+        <field name="__actionSelect" title="Action" widget="SuggestBox" canNew="false" target="com.axelor.meta.db.MetaAction" target-name="name" domain="self.type = 'action-view' and self.home = true"/>
       </panel>
+      <field name="singleTab" widget="inline-checkbox" />
     </panel>
     <panel title="Authorization">
       <field name="activateOn" validIf="!activateOn || (activateOn &amp;&amp; !expiresOn) || (activateOn &amp;&amp; expiresOn &amp;&amp; $moment(expiresOn) >= $moment(activateOn))"/>
@@ -42,6 +43,7 @@
     <panel-tabs>
       <panel-related field="roles" form-view="role-form" grid-view="role-grid"/>
       <panel-related field="permissions"/>
+      <panel-related field="metaPermissions"/>
     </panel-tabs>
   </form>
 
@@ -49,9 +51,11 @@
     onNew="com.axelor.auth.AuthService:preferences"
     onSave="com.axelor.auth.AuthService:validate">
     <panel title="User preferences" itemSpan="12">
+      <field name="image" showTitle="false" />
       <field name="email" widget="Email"/>
       <field name="language"/>
-      <field name="change" title="Change password?" widget="boolean"/>
+      <field name="singleTab" widget="inline-checkbox"/>
+      <field name="change" title="Change password?" widget="inline-checkbox"/>
       <panel showIf="change">
         <field name="newPassword" title="Password" placeholder="new password" widget="password" requiredIf="change" validIf="(!change) || (newPassword.length >= 4 &amp;&amp; confirm == newPassword)"/>
         <field name="confirm" title="Confirm" placeholder="confirm password" widget="password"/>

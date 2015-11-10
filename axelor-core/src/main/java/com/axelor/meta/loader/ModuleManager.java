@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -18,6 +18,7 @@
 package com.axelor.meta.loader;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -25,7 +26,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -34,7 +37,9 @@ import javax.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.axelor.auth.AuditableRunner;
 import com.axelor.auth.AuthService;
+import com.axelor.auth.db.AuditableModel;
 import com.axelor.auth.db.Group;
 import com.axelor.auth.db.User;
 import com.axelor.auth.db.repo.GroupRepository;
@@ -84,6 +89,9 @@ public class ModuleManager {
 	@Inject
 	private DemoLoader demoLoader;
 
+	@Inject
+	private AuditableRunner jobRunner;
+
 	private static final Set<String> SKIP = Sets.newHashSet(
 			"axelor-common",
 			"axelor-cglib",
@@ -93,35 +101,43 @@ public class ModuleManager {
 
 	}
 
-	public void initialize(boolean update, boolean withDemo) {
+	public void initialize(final boolean update, final boolean withDemo) {
+
+		final Runnable job = new Runnable() {
+
+			@Override
+			public void run() {
+
+				log.info("modules found:");
+				for (String name : resolver.names()) {
+					log.info("  " + name);
+				}
+
+				// install modules
+				for (Module module : resolver.all()) {
+					if (!module.isRemovable() || (module.isInstalled() && module.isPending())) {
+						install(module.getName(), update, withDemo, false);
+					}
+				}
+				// second iteration ensures proper view sequence
+				for (Module module : resolver.all()) {
+					if (module.isInstalled()) {
+						viewLoader.doLast(module, update);
+					}
+				}
+				// uninstall pending modules
+				for (Module module : resolver.all()) {
+					if (module.isRemovable() && !module.isInstalled() && module.isPending()) {
+						uninstall(module.getName());
+					}
+				}
+			}
+		};
 
 		try {
 			this.createUsers();
 			this.resolve(true);
-
-			log.info("modules found:");
-			for (String name : resolver.names()) {
-				log.info("  " + name);
-			}
-
-			// install modules
-			for (Module module : resolver.all()) {
-				if (!module.isRemovable() || (module.isInstalled() && module.isPending())) {
-					install(module.getName(), update, withDemo, false);
-				}
-			}
-			// second iteration ensures proper view sequence
-			for (Module module : resolver.all()) {
-				if (module.isInstalled()) {
-					viewLoader.doLast(module, update);
-				}
-			}
-			// uninstall pending modules
-			for (Module module : resolver.all()) {
-				if (module.isRemovable() && !module.isInstalled() && module.isPending()) {
-					uninstall(module.getName());
-				}
-			}
+			jobRunner.run(job);
 		} finally {
 			this.doCleanUp();
 		}
@@ -333,7 +349,7 @@ public class ModuleManager {
 	 * candidates).
 	 *
 	 */
-	public static List<String> findInstalled() {
+	public static Map<String, URL> findInstalled() {
 		final Resolver resolver = new Resolver();
 		final Set<String> installed = getInstalledModules();
 		final List<String> found = new ArrayList<>();
@@ -379,7 +395,13 @@ public class ModuleManager {
 				found.add(name);
 			}
 		}
-		return found;
+
+		final Map<String, URL> result = new LinkedHashMap<>();
+		for (String name : found) {
+			result.put(name, resolver.get(name).getPath());
+		}
+
+		return result;
 	}
 
 	@Transactional
@@ -473,17 +495,26 @@ public class ModuleManager {
 
 		if (adminGroup == null) {
 			adminGroup = new Group("admins", "Administrators");
-			adminGroup = groups.save(adminGroup);
 		}
 
 		if (userGroup == null) {
 			userGroup = new Group("users", "Users");
-			userGroup = groups.save(userGroup);
 		}
 
 		admin = new User("admin", "Administrator");
 		admin.setPassword(authService.encrypt("admin"));
 		admin.setGroup(adminGroup);
+
+		// set createdBy property to admin
+		try {
+			Field createdBy = AuditableModel.class.getDeclaredField("createdBy");
+			createdBy.setAccessible(true);
+			createdBy.set(adminGroup, admin);
+			createdBy.set(userGroup, admin);
+			createdBy.set(admin, admin);
+		} catch (Exception e) {
+		}
+
 		admin = users.save(admin);
 	}
 }

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -40,6 +40,12 @@ public class GridView extends AbstractView {
 	private String groupBy;
 
 	@XmlAttribute
+	private Boolean customSearch;
+
+	@XmlAttribute
+	private String freeSearch;
+
+	@XmlAttribute
 	private String onNew;
 
 	@XmlAttribute
@@ -53,7 +59,10 @@ public class GridView extends AbstractView {
 	
 	@XmlAttribute
 	private Boolean canDelete;
-	
+
+	@XmlAttribute
+	private Boolean canMove;
+
 	@XmlAttribute(name = "edit-icon")
 	private Boolean editIcon = Boolean.TRUE;
 
@@ -88,6 +97,22 @@ public class GridView extends AbstractView {
 
 	public void setGroupBy(String groupBy) {
 		this.groupBy = groupBy;
+	}
+
+	public Boolean getCustomSearch() {
+		return customSearch;
+	}
+
+	public void setCustomSearch(Boolean customSearch) {
+		this.customSearch = customSearch;
+	}
+
+	public String getFreeSearch() {
+		return freeSearch;
+	}
+
+	public void setFreeSearch(String freeSearch) {
+		this.freeSearch = freeSearch;
 	}
 
 	public String getOnNew() {
@@ -128,6 +153,14 @@ public class GridView extends AbstractView {
 
 	public void setCanDelete(Boolean canDelete) {
 		this.canDelete = canDelete;
+	}
+
+	public Boolean getCanMove() {
+		return canMove;
+	}
+
+	public void setCanMove(Boolean canMove) {
+		this.canMove = canMove;
 	}
 
 	public Boolean getEditIcon() {

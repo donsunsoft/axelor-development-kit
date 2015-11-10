@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -35,6 +35,7 @@ import org.joda.time.LocalDateTime;
 import com.axelor.db.JPA;
 import com.axelor.db.Model;
 import com.axelor.db.QueryBinder;
+import com.axelor.db.internal.DBHelper;
 import com.axelor.db.mapper.Adapter;
 import com.axelor.db.mapper.Mapper;
 import com.axelor.i18n.I18n;
@@ -482,11 +483,18 @@ public class Search extends AbstractView {
 						left = name;
 					}
 
+					String filter = null;
 					String first = as.split("\\.")[0];
 					as = as.replace('.', '_');
 
+					if ("LIKE".equals(operator) && DBHelper.isUnaccentEnabled()) {
+						filter = String.format("unaccent(%s) %s unaccent(:%s)", left, operator, as);
+					} else {
+						filter = String.format("%s %s :%s", left, operator, as);
+					}
+
 					binding.put(as, value);
-					groups.put(first, String.format("%s %s :%s", left, operator, as));
+					groups.put(first, filter);
 				}
 			}
 

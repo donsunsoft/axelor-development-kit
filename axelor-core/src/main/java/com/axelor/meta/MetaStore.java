@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -19,13 +19,10 @@ package com.axelor.meta;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
-
-import javax.xml.namespace.QName;
 
 import com.axelor.auth.AuthUtils;
 import com.axelor.auth.db.User;
@@ -34,15 +31,14 @@ import com.axelor.db.JpaSecurity;
 import com.axelor.db.JpaSecurity.AccessType;
 import com.axelor.db.Query;
 import com.axelor.inject.Beans;
-import com.axelor.meta.db.MetaSelect;
 import com.axelor.meta.db.MetaSelectItem;
-import com.axelor.meta.db.repo.MetaSelectItemRepository;
 import com.axelor.meta.loader.ModuleManager;
 import com.axelor.meta.loader.XMLViews;
 import com.axelor.meta.schema.ObjectViews;
 import com.axelor.meta.schema.actions.Action;
 import com.axelor.meta.schema.views.AbstractView;
 import com.axelor.meta.schema.views.Selection;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 
 public class MetaStore {
@@ -140,59 +136,63 @@ public class MetaStore {
 			return null;
 		}
 
-		final MetaSelect select = Query.of(MetaSelect.class)
-				.filter("self.name = ?", selection)
-				.order("-priority")
-				.fetchOne();
-
-		if (select == null) {
+		final Map<String, Selection.Option> all = buildSelectionMap(selection);
+		if(all == null) {
 			return null;
 		}
 
-		final List<MetaSelectItem> items = Query
-				.of(MetaSelectItem.class)
-				.filter("self.select.id = ?", select.getId())
+		return new ArrayList<>(all.values());
+	}
+
+	public static Selection.Option getSelectionItem(String selection, String value) {
+		if (StringUtils.isBlank(selection)) {
+			return null;
+		}
+
+		final Map<String, Selection.Option> all = buildSelectionMap(selection);
+		if(all == null) {
+			return null;
+		}
+
+		return all.get(value);
+	}
+
+	private static Map<String, Selection.Option> buildSelectionMap(String selection) {
+		final List<MetaSelectItem> items = Query.of(MetaSelectItem.class)
+				.filter("self.select.name = ?", selection)
 				.order("order")
+				.order("createdOn")
 				.fetch();
 
-		if (items == null || items.isEmpty()) {
+		if (items.isEmpty()) {
 			return null;
 		}
 
-		final List<Selection.Option> all = new ArrayList<>();
-		final Set<String> visited = new HashSet<>();
+		final Map<String, Selection.Option> all = new LinkedHashMap<>();
 
-		for(MetaSelectItem item : items) {
-			if (visited.contains(item.getValue())) {
-				continue;
+		for (MetaSelectItem item : items) {
+			if (item.getHidden() == Boolean.TRUE) {
+				all.remove(item.getValue());
+			} else {
+				all.put(item.getValue(), getSelectionItem(item));
 			}
-			visited.add(item.getValue());
-			all.add(getSelectionItem(item));
 		}
 
 		return all;
 	}
 
-	public static Selection.Option getSelectionItem(String selection, String value) {
-		final MetaSelectItem item = Beans.get(MetaSelectItemRepository.class).all()
-				.filter("self.select.name = ?1 AND self.value = ?2", selection, value)
-				.fetchOne();
-		if (item == null) {
-			return null;
-		}
-		return getSelectionItem(item);
-	}
-
+	@SuppressWarnings("unchecked")
 	private static Selection.Option getSelectionItem(MetaSelectItem item) {
 		Selection.Option option = new Selection.Option();
 		option.setValue(item.getValue());
 		option.setTitle(item.getTitle());
-		String data = item.getData();
-		if (data != null) {
-			Map<QName, String> attrs = new HashMap<>();
-			QName qn = new QName("x-data");
-			attrs.put(qn, data);
-			option.setData(attrs);
+		option.setIcon(item.getIcon());
+		option.setOrder(item.getOrder());
+		option.setHidden(item.getHidden());
+		ObjectMapper objectMapper = Beans.get(ObjectMapper.class);
+		try {
+			option.setData(objectMapper.readValue(item.getData(), Map.class));
+		} catch (Exception e) {
 		}
 		return option;
 	}

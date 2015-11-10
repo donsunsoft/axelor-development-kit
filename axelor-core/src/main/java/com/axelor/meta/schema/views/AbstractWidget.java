@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -51,10 +51,14 @@ import com.google.common.collect.Maps;
 	@Type(Group.class),
 	@Type(Notebook.class),
 	@Type(Page.class),
-	@Type(Portlet.class)
+	@Type(Portlet.class),
+	@Type(Dashlet.class)
 })
 public abstract class AbstractWidget {
 	
+	@XmlAttribute(name = "if")
+	private String conditionToCheck;
+
 	@XmlAttribute(name = "if-module")
 	private String moduleToCheck;
 	
@@ -66,6 +70,14 @@ public abstract class AbstractWidget {
 	@JsonIgnore
 	private String model;
 	
+	public String getConditionToCheck() {
+		return conditionToCheck;
+	}
+
+	public void setConditionToCheck(String conditionToCheck) {
+		this.conditionToCheck = conditionToCheck;
+	}
+
 	public String getModuleToCheck() {
 		return moduleToCheck;
 	}

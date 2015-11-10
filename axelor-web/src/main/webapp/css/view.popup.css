@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2012-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 /* jquery-ui fix */
 .ui-dialog {
 	padding: 0;
@@ -30,7 +29,7 @@
 
 	padding: 9px 15px;
 	font-size: 20.5px;
-	font-weight: 400;
+	font-weight: 600;
 	line-height: 26px;
 }
 
@@ -69,7 +68,7 @@
 .ui-dialog .ui-dialog-titlebar-close.ui-state-hover {
 	border: 0;
 	background: transparent;
-	font-weight: bold;
+	font-weight: 600;
 	opacity: 0.4;
 }
 

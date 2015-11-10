@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,12 +17,14 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 DashboardCtrl.$inject = ['$scope', '$element'];
 function DashboardCtrl($scope, $element) {
 
-	var view = $scope._views['dashboard'];
+	var view = $scope._views.dashboard;
 	if (view.items) {
 		$scope.$timeout(function () {
 			$scope.parse(view);
@@ -64,48 +66,62 @@ function DashboardCtrl($scope, $element) {
 	};
 
 	$scope.parse = function(schema) {
-		var items = schema.items || [];
-		var rows = [[]];
-		var last = _.last(rows);
-		var lastCol = 0;
+		var items = angular.copy(schema.items || []);
+		var row = [];
 
-		items.forEach(function (item) {
+		items.forEach(function (item, i) {
 			var span = item.colSpan || 6;
 
-			if (lastCol + span > 12) {
-				lastCol = 0;
-				last = [];
-				rows.push(last);
-			}
-
+			item.$index = i;
 			item.spanCss = {};
 			item.spanCss['dashlet-cs' + span] = true;
 
-			last.push(item);
-			lastCol += span;
+			row.push(item);
 		});
 
-		$scope.rows = rows;
+		$scope.schema = schema;
+		$scope.row = row;
 	};
 }
 
-ui.directive('uiViewDashboard', ['$compile', function($compile) {
+ui.directive('uiViewDashboard', ['ViewService', function(ViewService) {
 
 	return {
-		scope: true,
 		controller: DashboardCtrl,
 		link: function(scope, element, attrs) {
 
+			scope.sortableOptions = {
+				handle: ".dashlet-header",
+				cancel: ".dashlet-buttons",
+				items: ".dashlet",
+				tolerance: "pointer",
+				activate: function(e, ui) {
+					var height = ui.helper.height();
+					ui.placeholder.height(height);
+				},
+				deactivate: function(event, ui) {
+					axelor.$adjustSize();
+				},
+				stop: function (event, ui) {
+					var schema = scope.schema;
+					var items = _.map(scope.row, function (item) {
+						return schema.items[item.$index];
+					});
+
+					if (angular.equals(schema.items, items)) {
+						return;
+					}
+
+					schema.items = items;
+					return ViewService.save(schema);
+				}
+			};
 		},
 		replace: true,
 		transclude: true,
 		template:
-		"<div>" +
-			"<div class='dashlet-container container-fluid' ui-transclude>" +
-				"<div class='dashlet-row' ng-repeat='row in rows'>" +
-					"<div class='dashlet' ng-class='dashlet.spanCss' ng-repeat='dashlet in row' ui-view-dashlet></div>" +
-				"</div>" +
-			"</div>" +
+		"<div ui-sortable='sortableOptions' ng-model='row'>" +
+			"<div class='dashlet' ng-class='dashlet.spanCss' ng-repeat='dashlet in row' ui-view-dashlet></div>" +
 		"</div>"
 	};
 }]);
@@ -117,7 +133,7 @@ function DashletCtrl($scope, $element, MenuService, DataSource, ViewService) {
 
 	function init() {
 
-		ViewCtrl.call(self, $scope, DataSource, ViewService);
+		ui.ViewCtrl.call(self, $scope, DataSource, ViewService);
 
 		$scope.show = function() {
 
@@ -190,13 +206,14 @@ ui.directive('uiViewDashlet', ['$compile', function($compile){
 							}
 
 							if (element.parent().is(":hidden")) {
-								return lazy = true;
+								lazy = true;
+								return;
 							}
 
 							unwatch();
 							unwatch = null;
 
-							var ctx = undefined;
+							var ctx;
 							if (scope.getContext) {
 								ctx = scope.getContext();
 							}
@@ -205,17 +222,27 @@ ui.directive('uiViewDashlet', ['$compile', function($compile){
 							});
 						});
 					});
-				}
+				};
 			})()();
 
 			scope.parseDashlet = _.once(function(dashlet, view) {
 				var body = element.find('.dashlet-body:first');
+				var header = element.find('.dashlet-header:first');
 				var template = $('<div ui-portlet-' + view.viewType + '></div>');
 
 				scope.noFilter = !dashlet.canSearch;
 
 				template = $compile(template)(scope);
 				body.append(template);
+
+				if (dashlet.height) {
+					setTimeout(function() {
+						body.css("height", Math.max(0, dashlet.height - header.outerHeight()));
+					});
+				}
+				if (dashlet.css) {
+					element.addClass(dashlet.css);
+				}
 
 				element.removeClass('hidden');
 
@@ -227,13 +254,21 @@ ui.directive('uiViewDashlet', ['$compile', function($compile){
 				}
 			});
 
+			scope.collapsed = false;
+			scope.collapsedIcon = "fa-chevron-up";
 			scope.onDashletToggle = function(event) {
-				var e = $(event.target);
-				e.toggleClass('fa-chevron-up fa-chevron-down');
-				element.toggleClass('dashlet-minimized');
-				if (e.hasClass('fa-chevron-up')) {
+				var body = element.children('.dashlet-body');
+				var action = scope.collapsed ? "show" : "hide";
+				scope.collapsed = !scope.collapsed;
+				scope.collapsedIcon = scope.collapsed ? "fa-chevron-down" : "fa-chevron-up";
+				element.removeClass("collapsed");
+				body[action]("blind", 200, function () {
+					element.toggleClass("collapsed", !!scope.collapsed);
+					if (body.css('display') !== 'none' && action === 'hide') {
+						body.hide();
+					}
 					axelor.$adjustSize();
-				}
+				});
 			};
 
 			scope.doNext = function() {
@@ -251,6 +286,7 @@ ui.directive('uiViewDashlet', ['$compile', function($compile){
 					"<div class='dashlet-title pull-left'>{{title}}</div>" +
 					"<div class='dashlet-buttons pull-right'>" +
 						"<a href='' ng-click='onRefresh()'><i class='fa fa-refresh'></i></a>" +
+						"<a href='' ng-click='onDashletToggle()'><i class='fa' ng-class='collapsedIcon'></i></a>" +
 					"</div>" +
 					"<div class='dashlet-pager pull-right' ng-show='showPager'>" +
 						"<span class='dashlet-pager-text'>{{pagerText()}}</span>" +

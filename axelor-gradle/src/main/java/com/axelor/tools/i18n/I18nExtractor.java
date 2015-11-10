@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -174,6 +174,7 @@ public class I18nExtractor {
 					accept(new I18nItem(help, file, locator.getLineNumber()));
 					accept(new I18nItem(message, file, locator.getLineNumber()));
 					accept(new I18nItem(error, file, locator.getLineNumber()));
+					accept(new I18nItem(attributes.getValue("tag"), file, locator.getLineNumber()));
 					accept(new I18nItem(attributes.getValue("prompt"), file, locator.getLineNumber()));
 					accept(new I18nItem(attributes.getValue("placeholder"), file, locator.getLineNumber()));
 					

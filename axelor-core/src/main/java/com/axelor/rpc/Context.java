@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,22 +17,28 @@
  */
 package com.axelor.rpc;
 
+import static com.axelor.common.StringUtils.isBlank;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.axelor.auth.db.AuditableModel;
+import com.axelor.db.EntityHelper;
 import com.axelor.db.JPA;
 import com.axelor.db.Model;
 import com.axelor.db.mapper.Mapper;
 import com.axelor.db.mapper.Property;
 import com.axelor.db.mapper.PropertyType;
+import com.axelor.internal.cglib.proxy.Enhancer;
+import com.axelor.internal.cglib.proxy.InvocationHandler;
 import com.axelor.script.ScriptBindings;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * The Context class represents an {@link ActionRequest} context.<br>
@@ -58,9 +64,9 @@ import com.google.common.collect.Maps;
  * def so = context.parentContext as SaleOrder
  * </pre>
  *
- * The bean instanced returned from the context is a detached object and should
- * never be used with JPA/Hibernate session. It's only for convenience to get the
- * context values using the bean methods.
+ * The bean instanced returned from the context is a detached object (possibly a
+ * cglib proxy) and should not be used with JPA/Hibernate session. It's only for
+ * convenience to get the context values using the bean methods.
  *
  */
 public class Context extends HashMap<String, Object> {
@@ -76,11 +82,107 @@ public class Context extends HashMap<String, Object> {
 	private static final String KEY_PARENT_CONTEXT = "parentContext";
 	private static final String KEY_FORM = "_form";
 
+	private Class<?> beanClass;
 	private Object beanInstance;
 
-	private Context(Map<String, Object> data, Object bean) {
+	private Context(Map<String, Object> data, Object bean, Class<?> beanClass) {
 		super(data);
 		this.beanInstance = bean;
+		this.beanClass = beanClass;
+	}
+
+	/**
+	 * Create a proxy of the given bean instance if it's backed by database
+	 * record.
+	 *
+	 */
+	private static Object createProxy(final Object instance, final Map<String, Object> values) {
+
+		if (!(instance instanceof Model) || values == null) {
+			return instance;
+		}
+
+		final Model bean = (Model) instance;
+		if (bean.getId() == null || Enhancer.isEnhanced(bean.getClass()) || JPA.em().contains(bean)) {
+			return bean;
+		}
+
+		final Class<?> beanClass = EntityHelper.getEntityClass(bean);
+		final Enhancer enhancer = new Enhancer();
+
+		enhancer.setSuperclass(beanClass);
+		enhancer.setInterfaces(new Class[]{ ContextEntity.class });
+		enhancer.setCallback(new InvocationHandler() {
+
+			private Object managed;
+
+			private Map<String, String> getters;
+			private Set<String> computed;
+
+			private void init() {
+
+				if (getters != null) {
+					return;
+				}
+
+				getters = new HashMap<>();
+				computed = new HashSet<>();
+
+				Mapper mapper = Mapper.of(beanClass);
+				for (Property property : mapper.getProperties()) {
+					String name = property.getName();
+					if (mapper.getGetter(name) != null) {
+						getters.put(mapper.getGetter(name).getName(), name);
+					}
+					if (property.isVirtual()) {
+						computed.add(name);
+					}
+				}
+			}
+
+			private Object managed() {
+				if (managed == null) {
+					managed = JPA.em().find(beanClass, bean.getId());
+				}
+				return managed;
+			}
+
+			@Override
+			public Object invoke(Object obj, Method method, Object[] args) throws Throwable {
+
+				try {
+					// if call to ContextEntity#getEntit
+					if (ContextEntity.class.getDeclaredMethod(method.getName()) != null) {
+						return bean;
+					}
+				} catch (NoSuchMethodException e) {
+				}
+
+				// initialize on-demand
+				this.init();
+
+				final String fieldName = getters.get(method.getName());
+
+				// if not a getter, invoke on context bean instance
+				if (fieldName == null) {
+					return method.invoke(bean, args);
+				}
+				// if context variable, read from context bean instance
+				if (values.containsKey(fieldName) || computed.contains(fieldName)) {
+					return method.invoke(bean, args);
+				}
+
+				final Object managed = this.managed();
+				if (managed == null) {
+					return null;
+				}
+
+				// read from managed instance
+				return method.invoke(managed, args);
+			}
+		});
+
+		return enhancer.create();
 	}
 
 	@SuppressWarnings("all")
@@ -111,10 +213,10 @@ public class Context extends HashMap<String, Object> {
 	public static Context create(Map<String, Object> data, Class<?> beanClass) {
 		Preconditions.checkNotNull(beanClass);
 		if (data == null) {
-			data = Maps.newHashMap();
+			data = new HashMap<>();
 		}
 		if (ScriptBindings.class.isAssignableFrom(beanClass)) {
-			return new Context(data, new ScriptBindings(data));
+			return new Context(data, new ScriptBindings(data), ScriptBindings.class);
 		}
 		return create(data, beanClass, data.containsKey(KEY_FORM));
 	}
@@ -124,14 +226,14 @@ public class Context extends HashMap<String, Object> {
 
 		Preconditions.checkNotNull(beanClass);
 		if (data == null) {
-			data = Maps.newHashMap();
+			data = new HashMap<>();
 		}
 
 		Mapper mapper = Mapper.of(beanClass);
 		Object bean = Mapper.toBean(beanClass, null);
 
-		List<String> computed = Lists.newArrayList();
-		Map<String, Object> validated = Maps.newHashMap();
+		List<String> computed = new ArrayList<>();
+		Map<String, Object> validated = new HashMap<>();
 
 		for(String name : data.keySet()) {
 
@@ -152,14 +254,14 @@ public class Context extends HashMap<String, Object> {
 				continue;
 			}
 			else if (p.isCollection() && value instanceof Collection) {
-				List items = Lists.newArrayList();
+				List items = new ArrayList<>();
 				for(Object item : (Collection) value) {
 					items.add(createOrFind(p, item, nested));
 				}
 				value = items;
 			}
 			// non-owning side can't handle the relationship (RM-2616, RM-2457)
-			else if (p.getType() == PropertyType.ONE_TO_ONE && !Strings.isNullOrEmpty(p.getMappedBy())) {
+			else if (p.getType() == PropertyType.ONE_TO_ONE && !isBlank(p.getMappedBy())) {
 				if (nested) continue;
 				try {
 					value = JPA.em().find(p.getTarget(), Long.parseLong(((Map) value).get(FIELD_ID).toString()));
@@ -199,19 +301,22 @@ public class Context extends HashMap<String, Object> {
 			validated.put(name, mapper.getProperty(name).get(bean));
 		}
 
-		return new Context(validated, bean);
+		// create proxy to read missing values from managed instance
+		bean = createProxy(bean, validated);
+
+		return new Context(validated, bean, beanClass);
 	}
 
 	@SuppressWarnings("unchecked")
 	public <T> T asType(Class<T> type) {
 		Preconditions.checkArgument(type.isInstance(beanInstance),
 				"Invalid type {}, should be {}",
-				type.getName(), beanInstance.getClass().getName());
+				type.getName(), beanClass.getName());
 		return (T) beanInstance;
 	}
 
 	public Class<?> getContextClass() {
-		return beanInstance.getClass();
+		return beanClass;
 	}
 
 	public Context getParentContext() {
@@ -246,7 +351,7 @@ public class Context extends HashMap<String, Object> {
 	 *            value to be associated to the given key
 	 */
 	public void update(String key, Object  value) {
-		final Map<String, Object> values = Maps.newHashMap();
+		final Map<String, Object> values = new HashMap<>();
 		values.put(key, value);
 		this.update(values);
 	}
@@ -262,7 +367,7 @@ public class Context extends HashMap<String, Object> {
 		if (beanInstance == null || values == null || values.isEmpty()) {
 			return;
 		}
-		Mapper mapper = Mapper.of(beanInstance.getClass());
+		Mapper mapper = Mapper.of(beanClass);
 		for(String key : values.keySet()) {
 			Property property = mapper.getProperty(key);
 			if (property == null) {

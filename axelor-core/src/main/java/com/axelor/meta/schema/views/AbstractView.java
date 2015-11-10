@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -32,6 +32,7 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonSubTypes.Type;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -49,11 +50,18 @@ import com.google.common.base.Strings;
 	@Type(TreeView.class),
 	@Type(ChartView.class),
 	@Type(CalendarView.class),
-	@Type(Portal.class),
+	@Type(GanttView.class),
+	@Type(CardsView.class),
+	@Type(KanbanView.class),
+	@Type(CustomView.class),
+	@Type(Dashboard.class),
 	@Type(Search.class),
 	@Type(SearchFilters.class)
 })
 public abstract class AbstractView {
+
+	@XmlAttribute(name = "id")
+	private String xmlId;
 
 	@XmlAttribute
 	private String name;
@@ -62,13 +70,13 @@ public abstract class AbstractView {
 	private String title;
 
 	@XmlAttribute
+	private String css;
+
+	@XmlAttribute
 	private String model;
 
 	@XmlAttribute
 	private Boolean editable;
-
-	@XmlAttribute(name = "id")
-	private String id;
 
 	@XmlAttribute
 	private String groups;
@@ -84,6 +92,14 @@ public abstract class AbstractView {
 	@XmlElementWrapper
 	@XmlElement(name = "menu")
 	private List<Menu> menubar;
+
+	public String getXmlId() {
+		return xmlId;
+	}
+
+	public void setXmlId(String xmlId) {
+		this.xmlId = xmlId;
+	}
 
 	public String getName() {
 		return name;
@@ -103,8 +119,17 @@ public abstract class AbstractView {
 		return title;
 	}
 
+	@JsonSetter
 	public void setTitle(String title) {
 		this.title = title;
+	}
+
+	public String getCss() {
+		return css;
+	}
+
+	public void setCss(String css) {
+		this.css = css;
 	}
 
 	public String getModel() {
@@ -129,14 +154,6 @@ public abstract class AbstractView {
 
 	public void setEditable(Boolean editable) {
 		this.editable = editable;
-	}
-
-	public String getId() {
-		return id;
-	}
-	
-	public void setId(String id) {
-		this.id = id;
 	}
 
 	public String getGroups() {

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -40,7 +42,7 @@ function parseNumber(field, value) {
 		return value;
 	}
 	var num = +value;
-	if (num === NaN) {
+	if (isNaN(num)) {
 		return value;
 	}
 	return num;
@@ -87,6 +89,10 @@ ui.formWidget('BaseSelect', {
 			input.autocomplete("search" , '');
 		};
 
+		scope.handleClear = function(e) {
+			scope.setValue(null, true);
+		};
+
 		scope.handleDelete = function(e) {
 
 		};
@@ -110,7 +116,7 @@ ui.formWidget('BaseSelect', {
 				ul.addClass("tag-select-action-menu");
 			}
 			return el;
-		};
+		}
 
 		var showOn = this.showSelectionOn;
 		var doSetup = _.once(function (input) {
@@ -200,7 +206,8 @@ ui.formWidget('BaseSelect', {
 	template_editable:
 	'<span class="picker-input">'+
 		'<input type="text" autocomplete="off">'+
-		'<span class="picker-icons">'+
+		'<span class="picker-icons picker-icons-2">'+
+			'<i class="fa fa-times" ng-show="text" ng-click="handleClear()"></i>'+
 			'<i class="fa fa-caret-down" ng-click="showSelection()"></i>'+
 		'</span>'+
 	'</span>'
@@ -348,6 +355,11 @@ ui.formInput('ImageSelect', 'Select', {
 		
 		var field = scope.field;
 		var formatItem = scope.formatItem;
+		var selectIcons = {};
+
+		_.each(field.selectionList, function (item) {
+			selectIcons[item.value] = item.icon || item.value;
+		});
 
 		scope.canShowText = function () {
 			return field.labels === undefined || field.labels;
@@ -360,8 +372,12 @@ ui.formInput('ImageSelect', 'Select', {
 			return "";
 		};
 		
+		scope.findImage = function (value) {
+			return selectIcons[value] || this.BLANK;
+		};
+
 		scope.$watch('getValue()', function (value, old) {
-			scope.image = value || this.BLANK;
+			scope.image = scope.findImage(value);
 			element.toggleClass('empty', !value);
 		}.bind(this));
 	},
@@ -369,9 +385,13 @@ ui.formInput('ImageSelect', 'Select', {
 	link_editable: function(scope, element, attrs) {
 		this._super(scope, element, attrs);
 		var input = this.findInput(element);
-		
+		var selects = {};
+		_.each(scope.field.selectionList, function (item) {
+			selects[item.value] = (item.data||{}).icon || item.value;
+		});
+
 		scope.renderSelectItem = function(ul, item) {
-			var a = $("<a>").append($("<img>").attr("src", item.value));
+			var a = $("<a>").append($("<img>").attr("src", scope.findImage(item.value)));
 			var el = $("<li>").addClass("image-select-item").append(a).appendTo(ul);
 			
 			if (scope.canShowText()) {
@@ -487,15 +507,16 @@ ui.formInput('MultiSelect', 'Select', {
 			}
 
 			var top = pos.top,
-				left = pos.left,
-				width = element.innerWidth() - left;
+				left = pos.left;
+
+			width = element.innerWidth() - left;
 
 			elem.height(input.height() + 2);
 			elem.width(50);
 
 			input.css('position', 'absolute');
 			input.css('top', top + 5);
-			input.css('left', left + 2);
+			input.css('left', left);
 			input.css('width', width - 24);
 		}
 
@@ -570,6 +591,12 @@ ui.formInput('MultiSelect', 'Select', {
 			}
 			return input.val('');
 		};
+
+		input.on("input blur", function () {
+			if (placeholder) {
+				placeholder.toggleClass('hidden', !!(input.val() || scope.getValue()));
+			}
+		});
 
 		scope.$watch('items.length', function (value, old) {
 			setTimeout(function () {
@@ -670,10 +697,12 @@ ui.formInput('RadioSelect', {
 	template:
 	'<ul ng-class="{ readonly: isReadonly() }">'+
 		'<li ng-repeat="select in getSelection()">'+
-		'<label>'+
+		'<label class="ibox round">'+
 			'<input type="radio" name="radio_{{$parent.$id}}" value="{{select.value}}"'+
 			' ng-disabled="isReadonly()"'+
-			' ng-checked="getValue() == select.value"> {{select.title}}'+
+			' ng-checked="getValue() == select.value">'+
+			'<span class="box"></span>'+
+			'<span class="title">{{select.title}}</span>'+
 		'</label>'+
 		'</li>'+
 	'</ul>'
@@ -750,7 +779,7 @@ ui.formInput('NavSelect', {
 		}
 
 		function adjust() {
-			if (elemNavs === null) {
+			if (elemNavs === null || element.is(":hidden")) {
 				return;
 			}
 			var currentValue = scope.getValue();
@@ -802,13 +831,13 @@ ui.formInput('NavSelect', {
 		"<div class='nav-select'>" +
 		"<ul class='nav-steps' style='display: inline-flex; visibility: hidden;'>" +
 			"<li class='nav-step' ng-repeat='select in getSelection()' ng-class='{ active: isSelected(select), last: $last }'>" +
-				"<a href='' class='nav-label' ng-click='onSelect(select)' ng-bind-html-unsafe='select.title'></a>" +
+				"<a href='' class='nav-label' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
 			"</li>" +
 			"<li class='nav-step dropdown' ng-class='{ active: isSelected(more) }'>" +
-				"<a href='' class='nav-label dropdown-toggle' ng-click='onMenuClick($event)'><span ng-bind-html-unsafe='more.title'></span></a>" +
+				"<a href='' class='nav-label dropdown-toggle' ng-click='onMenuClick($event)'><span ng-bind-html='more.title'></span></a>" +
 				"<ul class='dropdown-menu pull-right' data-toggle='dropdown'>" +
 					"<li ng-repeat='select in getSelection()' ng-class='{active: getValue() == select.value}'>" +
-						"<a tabindex='-1' href='' ng-click='onSelect(select)' ng-bind-html-unsafe='select.title'></a>" +
+						"<a tabindex='-1' href='' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
 					"</li>" +
 				"</ul>" +
 			"</li>" +
@@ -816,4 +845,4 @@ ui.formInput('NavSelect', {
 		"</div>"
 });
 
-})(this);
+})();

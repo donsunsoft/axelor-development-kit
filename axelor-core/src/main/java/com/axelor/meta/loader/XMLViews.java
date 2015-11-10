@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -21,8 +21,10 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.XMLConstants;
 import javax.xml.bind.JAXBContext;
@@ -42,11 +44,15 @@ import com.axelor.common.StringUtils;
 import com.axelor.inject.Beans;
 import com.axelor.meta.db.MetaAction;
 import com.axelor.meta.db.MetaView;
+import com.axelor.meta.db.MetaViewCustom;
 import com.axelor.meta.db.repo.MetaActionRepository;
+import com.axelor.meta.db.repo.MetaViewCustomRepository;
 import com.axelor.meta.db.repo.MetaViewRepository;
 import com.axelor.meta.schema.ObjectViews;
 import com.axelor.meta.schema.actions.Action;
 import com.axelor.meta.schema.views.AbstractView;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
@@ -60,7 +66,9 @@ public class XMLViews {
 
 	private static final String LOCAL_SCHEMA = "object-views.xsd";
 	private static final String REMOTE_SCHEMA = "object-views_" + ObjectViews.VERSION + ".xsd";
-	
+
+	private static final Set<String> VIEW_TYPES = new HashSet<>();
+
 	private static final String INDENT_STRING = "  ";
 	private static final String[] INDENT_PROPERTIES = {
 		"eclipselink.indent-string",
@@ -103,6 +111,15 @@ public class XMLViews {
 
 		unmarshaller.setSchema(schema);
 		marshaller.setSchema(schema);
+
+		// find supported views
+		JsonSubTypes types = AbstractView.class.getAnnotation(JsonSubTypes.class);
+		for (JsonSubTypes.Type type : types.value()) {
+			JsonTypeName name = type.value().getAnnotation(JsonTypeName.class);
+			if (name != null) {
+				VIEW_TYPES.add(name.value());
+			}
+		}
 	}
 
 	public static ObjectViews unmarshal(InputStream stream) throws JAXBException {
@@ -121,6 +138,10 @@ public class XMLViews {
 		synchronized (marshaller) {
 			marshaller.marshal(views, writer);
 		}
+	}
+
+	public static boolean isViewType(String type) {
+		return VIEW_TYPES.contains(type);
 	}
 	
 	private static String prepareXML(String xml) {
@@ -203,30 +224,38 @@ public class XMLViews {
 	public static AbstractView findView(String model, String name, String type) {
 
 		final MetaViewRepository views = Beans.get(MetaViewRepository.class);
+		final MetaViewCustomRepository customViews = Beans.get(MetaViewCustomRepository.class);
 
 		MetaView view = null;
+		MetaViewCustom custom = null;
+
 		User user = AuthUtils.getUser();
 		Long group = user != null && user.getGroup() != null ? user.getGroup().getId() : null;
 
 		if (name != null) {
-			view = views.findByName(name, model, group);
-			if (view == null) {
-				view = views.findByName(name, model);
-				if (view == null) {
-					view = views.findByName(name);
-				}
+
+			// first find personalized view
+			if (user != null) {
+				custom = customViews.findByUser(name, model, user);
+				custom = custom == null ? customViews.findByUser(name, user) : custom;
+			}
+
+			// else find default view
+			if (custom == null) {
+				view = views.findByName(name, model, group);
+				view = view == null ? views.findByName(name, model) : view;
+				view = view == null ? views.findByName(name) : view;
 			}
 		}
 
 		if (view == null) {
 			view = views.findByType(type, model, group);
-			if (view == null) {
-				view = views.findByType(type, model);
-			}
+			view = view == null ? views.findByType(type, model) : view;
 		}
 
 		try {
-			return ((ObjectViews) XMLViews.unmarshal(view.getXml())).getViews().get(0);
+			final String xml = custom == null ? view.getXml() : custom.getXml();
+			return ((ObjectViews) XMLViews.unmarshal(xml)).getViews().get(0);
 		} catch (Exception e) {
 		}
 		return null;

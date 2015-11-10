@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -70,9 +72,41 @@ var regional = {
 	firstDay: 		1
 };
 
-//configure datepicker
+// configure datepicker
 $.timepicker.setDefaults(regional);
 $.datepicker.setDefaults(regional);
+
+// configure moment.js
+moment.locale('en', {
+	months: regional.monthNames,
+	monthsShort: regional.monthNamesShort,
+	weekdays: regional.dayNames,
+	weekdaysShort: regional.dayNamesShort,
+	weekdaysMin: regional.dayNamesMin,
+	calendar : {
+        sameDay : _t('[Today at] LT'),
+        nextDay : _t('[Tomorrow at] LT'),
+        nextWeek : _t('dddd [at] LT'),
+        lastDay : _t('[Yesterday at] LT'),
+        lastWeek : _t('[Last] dddd [at] LT'),
+        sameElse : _t('L')
+    },
+	relativeTime : {
+        future : _t("in %s"),
+        past : _t("%s ago"),
+        s : _t("a few seconds"),
+        m : _t("a minute"),
+        mm : _t("%d minutes"),
+        h : _t("an hour"),
+        hh : _t("%d hours"),
+        d : _t("a day"),
+        dd : _t("%d days"),
+        M : _t("a month"),
+        MM : _t("%d months"),
+        y : _t("a year"),
+        yy : _t("%d years")
+    }
+});
 
 // configure ui.mask
 function createTwoDigitDefinition( maximum ) {
@@ -554,4 +588,4 @@ ui.formInput('Duration', 'Time', {
 	}
 });
 
-})(this);
+})();

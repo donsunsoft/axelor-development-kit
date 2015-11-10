@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -68,7 +68,7 @@ ui.directive('uiFilterItem', function() {
 		},
 		link: function(scope, element, attrs, form) {
 
-			scope.getOperators = function() {
+			function getOperators() {
 
 				if (element.is(':hidden')) {
 					return;
@@ -92,7 +92,7 @@ ui.directive('uiFilterItem', function() {
 						title: OPERATORS[name]
 					};
 				});
-			};
+			}
 
 			scope.remove = function(filter) {
 				form.removeFilter(filter);
@@ -141,6 +141,10 @@ ui.directive('uiFilterItem', function() {
 				}
 			};
 
+			scope.$watch('filter.field', function (value, old) {
+				scope.operators = getOperators();
+			});
+
 			var unwatch = scope.$watch('fields', function(fields, old) {
 				if (_.isEmpty(fields)) return;
 				unwatch();
@@ -159,7 +163,7 @@ ui.directive('uiFilterItem', function() {
 						"<select ng-model='filter.field' ng-options='v.name as v.title for v in options' ng-change='onFieldChange()' class='input-medium'></select> " +
 					"</td>" +
 					"<td class='form-item filter-select'>" +
-						"<select ng-model='filter.operator' ng-options='o.name as o.title for o in getOperators()' class='input-medium'></select> "+
+						"<select ng-model='filter.operator' ng-options='o.name as o.title for o in operators' class='input-medium'></select> "+
 					"</td>" +
 					"<td class='form-item filter-select' ng-show='canShowSelect()'>" +
 						"<select ng-model='filter.value' class='input=medium' ng-options='o.value as o.title for o in getSelection()'></select>" +
@@ -251,11 +255,9 @@ ui.directive('uiFilterInput', function() {
 			element.focus(function(e) {
 				var type = scope.filter.type;
 				if (!(type == 'date' || type == 'datetime')) {
-					return
+					return;
 				}
-				if (picker == null) {
-					picker = element.datepicker(options);
-				}
+				picker = picker || element.datepicker(options);
 				picker.datepicker('show');
 			});
 
@@ -272,29 +274,40 @@ ui.directive('uiFilterInput', function() {
 FilterFormCtrl.$inject = ['$scope', '$element', 'ViewService'];
 function FilterFormCtrl($scope, $element, ViewService) {
 
-	this.doInit = function(model) {
+	this.doInit = function(model, viewItems) {
 		return ViewService
 		.getFields(model)
 		.success(function(fields) {
+
+			var items = {};
 			var nameField = null;
+
 			_.each(fields, function(field, name) {
 				if (field.name === 'id' || field.name === 'version' ||
 					field.name === 'archived' || field.name === 'selected') return;
-				//if (field.name === 'createdOn' || field.name === 'updatedOn') return;
-				//if (field.name === 'createdBy' || field.name === 'updatedBy') return;
 				if (field.type === 'binary' || field.large) return;
-				$scope.fields[name] = field;
 				if (field.nameColumn) {
 					nameField = name;
 				}
+				items[name] = field;
 			});
+
+			_.each(viewItems, function (item) {
+				if (item.hidden) {
+					delete items[item.name];
+				} else {
+					items[item.name] = item;
+				}
+			});
+
+			$scope.fields = items;
 			$scope.$parent.fields = $scope.fields;
-			$scope.$parent.nameField = nameField || ($scope.fields['name'] ? 'name' : null);
+			$scope.$parent.nameField = nameField || ($scope.fields.name ? 'name' : null);
 		});
 	};
 
 	$scope.fields = {};
-	$scope.filters = [{}];
+	$scope.filters = [{ $new: true }];
 	$scope.operator = 'and';
 	$scope.showArchived = false;
 
@@ -306,7 +319,7 @@ function FilterFormCtrl($scope, $element, ViewService) {
 	$scope.addFilter = function(filter) {
 		var last = _.last($scope.filters);
 		if (last && !(last.field && last.operator)) return;
-		$scope.filters.push(filter || {});
+		$scope.filters.push(filter || { $new: true });
 	};
 
 	this.removeFilter = function(filter) {
@@ -343,6 +356,10 @@ function FilterFormCtrl($scope, $element, ViewService) {
 		if (data) {
 			data.criteria = criteria;
 		}
+	});
+
+	$scope.$on('on:clear-filter', function (e, options) {
+		$scope.clearFilter(options);
 	});
 
 	function select(custom) {
@@ -392,7 +409,7 @@ function FilterFormCtrl($scope, $element, ViewService) {
 		});
 	}
 
-	$scope.clearFilter = function() {
+	$scope.clearFilter = function(options) {
 		$scope.filters.length = 0;
 		$scope.addFilter();
 
@@ -400,9 +417,14 @@ function FilterFormCtrl($scope, $element, ViewService) {
 			$scope.$parent.onClear();
 		}
 
-		$scope.applyFilter();
-		
-		if ($scope.$parent) {
+		var hide = options === true;
+		var silent = !hide && options && options.silent;
+
+		if (!silent) {
+			$scope.applyFilter();
+		}
+
+		if ($scope.$parent && hide) {
 			$scope.$parent.$broadcast('on:hide-menu');
 		}
 	};
@@ -463,6 +485,10 @@ function FilterFormCtrl($scope, $element, ViewService) {
 				criterion.value2 = filter.value2;
 			}
 
+			if (filter.$new) {
+				criterion.$new = true;
+			}
+
 			criteria.criteria.push(criterion);
 		});
 
@@ -486,6 +512,13 @@ function FilterFormCtrl($scope, $element, ViewService) {
 		}
 		return true;
 	};
+
+	$scope.onExport = function(full) {
+		var handler = $scope.$parent.handler;
+		if (handler && handler.onExport) {
+			handler.onExport(full);
+		}
+	};
 }
 
 ui.directive('uiFilterForm', function() {
@@ -501,8 +534,11 @@ ui.directive('uiFilterForm', function() {
 		controller: FilterFormCtrl,
 
 		link: function(scope, element, attrs, ctrl) {
-
-			ctrl.doInit(scope.model);
+			var unwatch = scope.$watch("$parent.viewItems", function (items) {
+				if (items === undefined) return;
+				unwatch();
+				ctrl.doInit(scope.model, items);
+			});
 		},
 		template:
 		"<div class='filter-form'>" +
@@ -521,9 +557,11 @@ ui.directive('uiFilterForm', function() {
 			"<div class='links'>"+
 				"<a href='' ng-click='addFilter()' x-translate>Add filter</a>"+
 				"<span class='divider'>|</span>"+
-				"<a href='' ng-click='clearFilter()' x-translate>Clear</a></li>"+
+				"<a href='' ng-click='clearFilter(true)' x-translate>Clear</a></li>"+
 				"<span class='divider' ng-if='canExport()'>|</span>"+
-				"<a href='' ng-if='canExport()' ui-grid-export x-translate>Export</a></li>"+
+				"<a href='' ng-if='canExport()' ng-click='onExport()' x-translate>Export</a></li>"+
+				"<span class='divider' ng-if='canExport()'>|</span>"+
+				"<a href='' ng-if='canExport()' ng-click='onExport(true)' x-translate>Export full</a></li>"+
 				"<span class='divider'>|</span>"+
 				"<a href='' ng-click='applyFilter(true)' x-translate>Apply</a></li>"+
 			"<div>"+
@@ -556,9 +594,16 @@ ui.directive('uiFilterBox', function() {
 				ViewService.getMetaDef($scope.model, {name: filterView, type: 'search-filters'})
 				.success(function(fields, view) {
 					$scope.view = view;
+					$scope.viewItems = angular.copy(view.items) || [];
 					$scope.viewFilters = angular.copy(view.filters);
+					_.each($scope.viewItems, function (item) {
+						var field = fields[item.name] || {};
+						item.type = field.type;
+						item.title = item.title || field.title;
+					});
 				});
 			} else {
+				$scope.viewItems = [];
 				filterView = 'act:' + (handler._viewParams || {}).action;
 			}
 
@@ -600,7 +645,7 @@ ui.directive('uiFilterBox', function() {
 				} else {
 					$scope.custFilters.push(custom);
 				}
-				
+
 				return found ? found : custom;
 			}
 
@@ -608,6 +653,7 @@ ui.directive('uiFilterBox', function() {
 
 				var selected = live ? !filter.$selected : filter.$selected;
 				var selection = isCustom ? current.customs : current.domains;
+				var applyAll = (handler.schema||{}).customSearch === false;
 
 				if (live) {
 					$scope.onClear();
@@ -623,8 +669,8 @@ ui.directive('uiFilterBox', function() {
 					selection.splice(index, 1);
 				}
 
-				if (isCustom && live) {
-					$scope.hasCustSelected = filter.$selected;
+				if (isCustom && (live || applyAll)) {
+					$scope.hasCustSelected = filter.$selected && !applyAll;
 					$scope.custName = filter.$selected ? filter.name : null;
 					$scope.oldCustTitle = filter.$selected ? filter.title : '';
 					$scope.custTitle = filter.$selected ? filter.title : '';
@@ -632,7 +678,7 @@ ui.directive('uiFilterBox', function() {
 					return $scope.$broadcast('on:select-custom', filter, selection);
 				}
 
-				if (live) {
+				if (live || applyAll) {
 					$scope.$broadcast('on:select-domain', filter);
 				}
 			};
@@ -678,7 +724,7 @@ ui.directive('uiFilterBox', function() {
 					name = _.underscored(title);
 				}
 
-				var selected = new Array();
+				var selected = [];
 
 				_.each($scope.viewFilters, function(item, i) {
 					if (item.$selected) selected.push(i);
@@ -758,11 +804,14 @@ ui.directive('uiFilterBox', function() {
 				$scope.custTitle = null;
 				$scope.custShared = false;
 				$scope.custTerm = null;
-				
+				$scope.tagItems = [];
+
 				if ($scope.handler && $scope.handler.clearFilters) {
 					$scope.handler.clearFilters();
 				}
 			};
+
+			$scope.tagItems = [];
 
 			$scope.onFilter = function(criteria) {
 
@@ -773,7 +822,7 @@ ui.directive('uiFilterBox', function() {
 				}
 
 				var search = _.extend({}, criteria);
-				if (search.criteria == undefined) {
+				if (!search.criteria) {
 					search.operator = 'and';
 					search.criteria = [];
 				} else {
@@ -786,7 +835,7 @@ ui.directive('uiFilterBox', function() {
 				_.each(current.domains, function(domain) {
 					domains.push(domain);
 				});
-				
+
 				_.each(current.customs, function(custom) {
 					if($scope.hasCustSelected) { return; }
 					if (custom.criteria && custom.criteria.criteria) {
@@ -802,14 +851,14 @@ ui.directive('uiFilterBox', function() {
 						}
 					});
 				});
-				
+
 				if (customs.length > 0) {
 					search.criteria.push({
 						operator: criteria.operator || 'and',
 						criteria: customs
 					});
 				}
-				
+
 				search._domains = domains;
 				search.criteria = process(search.criteria);
 
@@ -834,18 +883,49 @@ ui.directive('uiFilterBox', function() {
 					});
 				}
 
+				var tag = {};
+				var all = _.chain([$scope.viewFilters, $scope.custFilters])
+				   .flatten()
+				   .filter(function (item) {
+					  return item && item.$selected;
+				   })
+				   .pluck('title')
+				   .value();
+
+				var nCustom = _.filter((criteria||{}).criteria, function (item) { return item.$new; }).length;
+				if (nCustom > 0) {
+					all.push(_t('Custom ({0})', nCustom));
+				}
+
+				if (all.length === 1) {
+					tag.title = all[0];
+				}
+				if (all.length > 1) {
+					tag.title = _t('Filters ({0})', all.length);
+					tag.help = all.join(', ');
+				}
+
+				if (all.length === 0) {
+					$scope.tagItems = [];
+				} else {
+					$scope.tagItems = [tag];
+				}
+
 				handler.filter(search);
 			};
 
 			$scope.onFreeSearch = function() {
 
-				var filters = new Array(),
+				var filters = [],
 					fields = {},
 					text = this.custTerm,
 					number = +(text);
 
-				fields = _.extend({}, this.$parent.fields, this.fields);
 				text = text ? text.trim() : null;
+
+				if ((handler.schema || {}).freeSearch === 'all') {
+					fields = _.extend({}, this.$parent.fields, this.fields);
+				}
 
 				if (this.nameField && text) {
 					filters.push({
@@ -869,6 +949,7 @@ ui.directive('uiFilterBox', function() {
 					case 'integer':
 					case 'decimal':
 						if (_.isNaN(number) || !text || !_.isNumber(number)) continue;
+						if (field.type === 'integer' && (number > 2147483647 || number < -2147483648)) continue;
 						fieldName = name;
 						operator = '=';
 						value = number;
@@ -915,7 +996,8 @@ ui.directive('uiFilterBox', function() {
 
 			scope.onSearch = function(e) {
 				if (menu && menu.is(':visible')) {
-					return hideMenu();
+					hideMenu();
+					return;
 				}
 				toggleButton = $(e.currentTarget);
 				menu.show();
@@ -931,9 +1013,19 @@ ui.directive('uiFilterBox', function() {
 				});
 			};
 			
-			// append menu to view page to overlap the view
+			scope.onClearFilter = function () {
+				hideMenu();
+				scope.visible = true;
+				scope.$broadcast('on:clear-filter');
+				scope.$timeout(function () {
+					scope.visible = false;
+				});
+			};
+
+			// append menu to body to fix overlaping issue
 			scope.$timeout(function() {
-				element.parents('.view-container').after(menu);
+				menu.zIndex(element.zIndex() + 1);
+				menu.appendTo("body");
 			});
 
 			element.on('keydown.search-query', '.search-query', function(e) {
@@ -945,13 +1037,22 @@ ui.directive('uiFilterBox', function() {
 			scope.$on('on:hide-menu', function () {
 				hideMenu();
 			});
+			
+			scope.$on('on:clear-filter-silent', function () {
+				var visible = scope.visible;
+				scope.visible = true;
+				scope.$broadcast('on:clear-filter', { silent: true });
+				scope.$timeout(function () {
+					scope.visible = visible;
+				});
+			});
 
 			function hideMenu() {
 				$(document).off('mousedown.search-menu', onMouseDown);
 				scope.applyLater(function () {
 					scope.visible = false;
 				});
-				return menu.hide();
+				menu.hide();
 			}
 
 			function onMouseDown(e) {
@@ -959,14 +1060,22 @@ ui.directive('uiFilterBox', function() {
 				if (all.is(e.target) || all.has(e.target).size() > 0) {
 					return;
 				}
-				all = $('.ui-widget-overlay,.ui-datepicker:visible,.ui-dialog:visible');
-				if (all.is(e.target) || all.has(e.target).size() > 0) {
+				if ($(e.target).zIndex() > $(menu).zIndex()) {
 					return;
 				}
-				if(menu){
+				if(menu) {
 					hideMenu();
 				}
 			}
+
+			scope.handler.$watch('schema.freeSearch', function (value, old) {
+				if (value === 'none') {
+					var input = element.find('input:first')
+						.addClass('not-readonly')
+						.attr('readonly', true)
+						.click(scope.onSearch.bind(scope));
+				}
+			});
 
 			element.on('$destroy', function() {
 				$(document).on('mousedown.search-menu', onMouseDown);
@@ -979,15 +1088,28 @@ ui.directive('uiFilterBox', function() {
 		replace: true,
 		template:
 		"<div class='filter-box'>" +
-			"<input type='text' class='search-query' ng-model='custTerm'>" +
-			"<span class='search-icons'>" +
+			"<div class='tag-select picker-input search-query'>" +
+			  "<ul>" +
+				"<li class='tag-item label label-info' ng-repeat='item in tagItems'>" +
+					"<span class='tag-text' title='{{item.help}}'>{{item.title}}</span> " +
+					"<i class='fa fa-times fa-small' ng-click='onClearFilter()'></i>" +
+				"</li>" +
+				"<li class='tag-selector' ng-show='!tagItems.length'>" +
+					"<input type='text' autocomplete='off' ng-model='custTerm'>" +
+				"</li>" +
+			  "</ul>" +
+			  "<span class='picker-icons'>" +
 				"<i ng-click='onSearch($event)' class='fa fa-caret-down hidden-phone'></i>"+
 				"<i ng-click='onRefresh()' class='fa fa-search'></i>" +
-			"</span>" +
+			  "</span>" +
+			"</div>" +
 			"<div class='filter-menu hidden-phone' ui-watch-if='visible'>" +
 				"<strong x-translate>Advanced Search</strong>" +
 				"<hr>"+
 				"<div class='filter-list'>" +
+					"<dl ng-show='!hasFilters() && handler.schema.customSearch == false' style='display: hidden;'>" +
+						"<dd><span x-translate>No filters available</span></dd>" +
+					"</dl>" +
 					"<dl ng-show='hasFilters(1)'>" +
 						"<dt><i class='fa fa-floppy-o'></i><span x-translate> Filters</span></dt>" +
 						"<dd ng-repeat='filter in viewFilters' class='checkbox'>" +
@@ -1007,24 +1129,26 @@ ui.directive('uiFilterBox', function() {
 						"</dd>" +
 					"</dl>" +
 				"</div>" +
-				"<hr ng-show='hasFilters()'>" +
-				"<div ui-filter-form x-model='model'></div>" +
-				"<hr>" +
-				"<div class='form-inline'>" +
-					"<div class='control-group'>" +
-						"<input type='text' placeholder='{{\"Save filter as\" | t}}' ng-model='custTitle'> " +
-						"<label class='checkbox'>" +
-							"<input type='checkbox' ng-model='custShared'><span x-translate>Share</span>" +
-						"</label>" +
+				"<div ng-hide='handler.schema.customSearch == false'>" +
+					"<hr ng-show='hasFilters()'>" +
+					"<div ui-filter-form x-model='model'></div>" +
+					"<hr>" +
+					"<div class='form-inline'>" +
+						"<div class='control-group'>" +
+							"<input type='text' placeholder='{{\"Save filter as\" | t}}' ng-model='custTitle'> " +
+							"<label class='checkbox'>" +
+								"<input type='checkbox' ng-model='custShared'><span x-translate>Share</span>" +
+							"</label>" +
+						"</div>" +
+						"<button class='btn btn-small' ng-click='onSave()' ng-show='custTitle && !hasCustSelected'><span x-translate>Save</span></button> " +
+						"<button class='btn btn-small' ng-click='onSave()' ng-show='custTitle && hasCustSelected'><span x-translate>Update</span></button> " +
+						"<button class='btn btn-small' ng-click='onSave(true)' ng-show='canSaveNew()'><span x-translate>Save as</span></button> " +
+						"<button class='btn btn-small' ng-click='onDelete()' ng-show='hasCustSelected'><span x-translate>Delete</span></button>" +
 					"</div>" +
-					"<button class='btn btn-small' ng-click='onSave()' ng-show='custTitle && !hasCustSelected'><span x-translate>Save</span></button> " +
-					"<button class='btn btn-small' ng-click='onSave()' ng-show='custTitle && hasCustSelected'><span x-translate>Update</span></button> " +
-					"<button class='btn btn-small' ng-click='onSave(true)' ng-show='canSaveNew()'><span x-translate>Save as</span></button> " +
-					"<button class='btn btn-small' ng-click='onDelete()' ng-show='hasCustSelected'><span x-translate>Delete</span></button>" +
 				"</div>" +
 			"</div>" +
 		"</div>"
 	};
 });
 
-}).call(this);
+})();

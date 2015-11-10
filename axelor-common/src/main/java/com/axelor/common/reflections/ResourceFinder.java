@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -43,20 +43,13 @@ public final class ResourceFinder {
 	private Set<Pattern> pathPatterns = Sets.newLinkedHashSet();
 	
 	ResourceFinder() {
+
 	}
 
-	/**
-	 * Find using the given {@link ClassLoader}
-	 * 
-	 * @param loader
-	 *            the class loader to use
-	 * @return the same finder
-	 */
-	public ResourceFinder using(ClassLoader loader) {
+	ResourceFinder(ClassLoader loader) {
 		this.loader = loader;
-		return this;
 	}
-	
+
 	/**
 	 * Find with the given name pattern.
 	 * 

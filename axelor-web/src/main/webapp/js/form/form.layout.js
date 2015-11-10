@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -16,6 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 (function() {
+
+/* jshint newcap: false */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -136,7 +140,7 @@ function TableLayout(items, attrs, $scope, $compile) {
 			widths = colWidths || computeWidths(row);
 
 		_.each(row, function(cell, i) {
-				el = $('<td></td>')
+				var el = $('<td></td>')
 					.addClass(cell.css)
 					.attr('colspan', cell.colspan)
 					.attr('rowspan', cell.rowspan)
@@ -145,7 +149,7 @@ function TableLayout(items, attrs, $scope, $compile) {
 				if (_.isArray(widths) && widths[i]) {
 					el.width(widths[i]);
 				}
-				if ($(cell.elem).is('.form-item-container') && __appSettings['view.form.hot-edit']) {
+				if ($(cell.elem).is('.form-item-container') && axelor.config['view.form.hot-edit']) {
 					$(cell.elem).prepend($('<span class="fa fa-pencil hot-edit-icon"></span>'));
 				}
 				numCells += cell.colspan || 1;
@@ -256,11 +260,14 @@ function PanelLayout(items, attrs, $scope, $compile) {
 
 ui.directive('uiPanelLayout', ['$compile', function($compile) {
 
-	return function(scope, element, attrs) {
-		var elem = element.children('[ui-transclude]:first');
-		var items = elem.children();
-		var layout = PanelLayout(items, attrs, scope, $compile);
-		elem.append(layout);
+	return {
+		priority: 1000,
+		link: function(scope, element, attrs) {
+			var elem = element.children('[ui-transclude]:first');
+			var items = elem.children();
+			var layout = PanelLayout(items, attrs, scope, $compile);
+			elem.append(layout);
+		}
 	};
 
 }]);
@@ -283,7 +290,7 @@ function BarLayout(items, attrs, $scope, $compile) {
 		}
 	});
 
-	if (side.children().size() == 0) {
+	if (side.children().size() === 0) {
 		main.removeClass("span8").addClass("span12");
 		side = null;
 	}
@@ -462,7 +469,7 @@ ui.directive('uiPanelEditor', ['$compile', 'ActionService', function($compile, A
 					return;
 				}
 				var valid = scope.isValid();
-				if (!valid && !scope.isRequired() && isEmpty(scope.record)) {
+				if (!valid && !scope.$parent.isRequired() && isEmpty(scope.record)) {
 					valid = true;
 				}
 				if (scope.setValidity) {
@@ -482,4 +489,4 @@ ui.directive('uiPanelEditor', ['$compile', 'ActionService', function($compile, A
 	};
 }]);
 
-})(this);
+})();

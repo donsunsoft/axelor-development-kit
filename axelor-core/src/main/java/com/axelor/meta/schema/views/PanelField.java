@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package com.axelor.meta.schema.views;
+
+import static com.axelor.common.StringUtils.isBlank;
 
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
@@ -46,6 +48,7 @@ public class PanelField extends Field {
 	public PanelEditor getEditor() {
 		if (editor != null) {
 			editor.forField = this;
+			editor.setModel(isBlank(getTarget()) ? getModel() : getTarget());
 		}
 		return editor;
 	}

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,18 +15,28 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
-this.HtmlViewCtrl = HtmlViewCtrl;
+ui.HtmlViewCtrl = HtmlViewCtrl;
+ui.HtmlViewCtrl.$inject = ['$scope', '$element', '$sce'];
 
-HtmlViewCtrl.$inject = ['$scope', '$element'];
-function HtmlViewCtrl($scope, $element) {
+function HtmlViewCtrl($scope, $element, $sce) {
 
 	var views = $scope._views;
-	$scope.view = views['html'];
-};
+	$scope.view = views.html;
+
+	$scope.getURL = function () {
+		var view = $scope.view;
+		if (view) {
+			return $sce.trustAsResourceUrl(view.name || view.resource);
+		}
+		return null;
+	};
+}
 
 var directiveFn = function(){
 	return {
@@ -34,7 +44,7 @@ var directiveFn = function(){
 		replace: true,
 		template:
 		'<div class="iframe-container">'+
-			'<iframe ng-src="{{view.name || view.resource}}" frameborder="0" scrolling="auto"></iframe>'+
+			'<iframe ng-src="{{getURL()}}" frameborder="0" scrolling="auto"></iframe>'+
 		'</div>'
 	};
 };
@@ -42,4 +52,4 @@ var directiveFn = function(){
 ui.directive('uiViewHtml', directiveFn);
 ui.directive('uiPortletHtml', directiveFn);
 
-}).call(this);
+})();

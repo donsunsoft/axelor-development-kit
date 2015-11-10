@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -36,8 +36,15 @@ import com.google.common.collect.Maps;
 @JsonTypeName("search-filters")
 public class SearchFilters extends AbstractView {
 
+	@XmlElement(name = "field", type = Field.class)
+	private List<AbstractWidget> items;
+
 	@XmlElement(name = "filter")
 	private List<SearchFilter> filters;
+
+	public List<AbstractWidget> getItems() {
+		return items;
+	}
 
 	public List<SearchFilter> getFilters() {
 		if(filters != null) {

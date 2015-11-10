@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -195,11 +195,9 @@ class Property {
 		def empty = this.getEmptyValue()
 
 		if (empty != null) {
-			result += "if ($name == null) return $empty;"
+			return "return $name == null ? $empty : $name;"
 		}
-		result += "return $name;"
-		result = result.collect { "        " + it }
-		return result.join("\n").trim()
+		return "return $name;"
 	}
 
 	String getSetterBody() {
@@ -216,8 +214,8 @@ class Property {
 
 	String getDelinkCode() {
 		def mapped = attrs["mappedBy"]
-		def orphan = attrs["orphan"] == "true"
-		if (!orphan || !mapped || type != "one-to-many") {
+		def orphanRemoval = this.isOrphanRemoval()
+		if (orphanRemoval || !mapped || type != "one-to-many") {
 			return null
 		}
 		return "item.set" + firstUpper(mapped) + "(null);"
@@ -225,11 +223,11 @@ class Property {
 
 	String getDelinkAllCode() {
 		def mapped = attrs["mappedBy"]
-		def orphan = attrs["orphan"] == "true"
-		if (!orphan || !mapped || type != "one-to-many") {
+		def orphanRemoval = this.isOrphanRemoval()
+		if (orphanRemoval || !mapped || type != "one-to-many") {
 			return null
 		}
-		return """for(${target} item : ${name}) {
+		return """for (${target} item : ${name}) {
 				item.set${firstUpper(mapped)}(null);
 			}"""
 	}
@@ -273,8 +271,15 @@ class Property {
 		return attrs["nullable"] == "true" && attrs["required"] != "true"
 	}
 
-	boolean isOrphan() {
-		return attrs["orphan"] == "true"
+	boolean isOrphanRemoval() {
+		if (attrs.containsKey("orphanRemoval")) {
+			return attrs["orphanRemoval"] == "true"
+		}
+		// if still using old "orphan" attribute
+		if (attrs.containsKey("orphan")) {
+			return attrs["orphan"] == "false"
+		}
+		return type == "one-to-many" && attrs["mappedBy"] != null
 	}
 
 	boolean isPassword() {
@@ -310,7 +315,7 @@ class Property {
 	}
 
 	String firstUpper(String string) {
-		string.substring(0, 1).toUpperCase() + string.substring(1)
+		return Utils.firstUpper(string)
 	}
 
 	String getCode() {
@@ -428,6 +433,19 @@ class Property {
 		def column = attrs.column
 		def unique = attrs.unique
 
+		if (Naming.isReserved(name)) {
+			throw new IllegalArgumentException(
+				"Invalid use of a Java keyword '${name}' in domain object: ${entity.name}")
+		}
+
+		if (!collection) {
+			def col = getColumnAuto()
+			if (Naming.isKeyword(col)) {
+				throw new IllegalArgumentException(
+					"Invalid use of an SQL keyword '${col}' in domain object: ${entity.name}")
+			}
+		}
+
 		if (column == null && unique == null)
 			return null
 
@@ -512,7 +530,9 @@ class Property {
 	}
 
 	private Annotation $nameColumn() {
-		if (isNameField())
+		if (!entity && isNameField())
+			return annon("com.axelor.db.annotations.NameColumn", true)
+		if (entity.nameField == this || (!entity.nameField && isNameField()))
 			annon("com.axelor.db.annotations.NameColumn", true)
 	}
 
@@ -528,6 +548,7 @@ class Property {
 		def image = attrs['image']
 		def password = attrs['password']
 		def massUpdate = attrs['massUpdate']
+		def translatable = attrs['translatable']
 
 		if (massUpdate && (isUnique() || isCollection() || attrs['large'])) {
 			massUpdate = false;
@@ -537,7 +558,8 @@ class Property {
 			selection = selection.replaceAll("\\],\\s*\\[", '], [')
 		}
 
-		if (title || help || readonly || hidden || multiline || selection || image || isPassword() || massUpdate)
+		if (title || help || readonly || hidden || multiline || selection ||
+			image || isPassword() || massUpdate || search || translatable)
 			annon("com.axelor.db.annotations.Widget")
 				.add("image", image, false)
 				.add("title", title)
@@ -549,6 +571,7 @@ class Property {
 				.add("selection", selection)
 				.add("password", password, false)
 				.add("massUpdate", massUpdate, false)
+				.add("translatable", translatable, false)
 	}
 
 	private List<Annotation> $binary() {
@@ -584,7 +607,7 @@ class Property {
 		if (name != "id")
 			return null
 
-		if (!entity.sequential) {
+		if (!entity.sequential || entity.mappedSuper) {
 			return [
 				annon("javax.persistence.Id", true),
 				annon("javax.persistence.GeneratedValue")
@@ -610,17 +633,17 @@ class Property {
 		if (type != "one-to-one") return null
 
 		def mapped = attrs.get('mappedBy')
-		def orphan = attrs.containsKey('orphan') ? attrs.get('orphan') : true
+		def orphanRemoval = this.isOrphanRemoval()
 
 		def a = annon("javax.persistence.OneToOne")
 			.add("fetch", "javax.persistence.FetchType.LAZY", false)
 			.add("mappedBy", mapped)
 
-		if (orphan) {
-			a.add("cascade", ["javax.persistence.CascadeType.PERSIST","javax.persistence.CascadeType.MERGE"], false)
-		} else {
+		if (orphanRemoval) {
 			a.add("cascade", "javax.persistence.CascadeType.ALL", false)
 			a.add("orphanRemoval", "true", false)
+		} else {
+			a.add("cascade", ["javax.persistence.CascadeType.PERSIST","javax.persistence.CascadeType.MERGE"], false)
 		}
 		return a
 	}
@@ -638,17 +661,17 @@ class Property {
 		if (type != "one-to-many") return null
 
 		def mapped = attrs.get('mappedBy')
-		def orphan = attrs.get('orphan')
+		def orphanRemoval = this.isOrphanRemoval()
 
 		def a = annon("javax.persistence.OneToMany")
 			.add("fetch", "javax.persistence.FetchType.LAZY", false)
 			.add("mappedBy", mapped)
 
-		if (orphan != null) {
-			a.add("cascade", ["javax.persistence.CascadeType.PERSIST", "javax.persistence.CascadeType.MERGE"], false)
-		} else {
+		if (orphanRemoval) {
 			a.add("cascade", "javax.persistence.CascadeType.ALL", false)
 			a.add("orphanRemoval", "true", false)
+		} else {
+			a.add("cascade", ["javax.persistence.CascadeType.PERSIST", "javax.persistence.CascadeType.MERGE"], false)
 		}
 		return a
 	}

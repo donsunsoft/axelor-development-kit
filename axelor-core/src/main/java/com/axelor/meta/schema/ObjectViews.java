@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -33,18 +33,21 @@ import com.axelor.meta.schema.actions.ActionGroup;
 import com.axelor.meta.schema.actions.ActionImport;
 import com.axelor.meta.schema.actions.ActionMethod;
 import com.axelor.meta.schema.actions.ActionRecord;
+import com.axelor.meta.schema.actions.ActionReport;
 import com.axelor.meta.schema.actions.ActionValidate;
 import com.axelor.meta.schema.actions.ActionView;
 import com.axelor.meta.schema.actions.ActionWS;
-import com.axelor.meta.schema.actions.ActionWorkflow;
 import com.axelor.meta.schema.views.AbstractView;
 import com.axelor.meta.schema.views.CalendarView;
+import com.axelor.meta.schema.views.CardsView;
 import com.axelor.meta.schema.views.ChartView;
+import com.axelor.meta.schema.views.CustomView;
 import com.axelor.meta.schema.views.Dashboard;
 import com.axelor.meta.schema.views.FormView;
+import com.axelor.meta.schema.views.GanttView;
 import com.axelor.meta.schema.views.GridView;
+import com.axelor.meta.schema.views.KanbanView;
 import com.axelor.meta.schema.views.MenuItem;
-import com.axelor.meta.schema.views.Portal;
 import com.axelor.meta.schema.views.Search;
 import com.axelor.meta.schema.views.SearchFilters;
 import com.axelor.meta.schema.views.Selection;
@@ -72,10 +75,13 @@ public class ObjectViews {
 		@XmlElement(name = "grid", type = GridView.class),
 		@XmlElement(name = "tree", type = TreeView.class),
 		@XmlElement(name = "chart", type = ChartView.class),
-		@XmlElement(name = "portal", type = Portal.class),
 		@XmlElement(name = "dashboard", type = Dashboard.class),
 		@XmlElement(name = "search", type = Search.class),
 		@XmlElement(name = "calendar", type = CalendarView.class),
+		@XmlElement(name = "gantt", type = GanttView.class),
+		@XmlElement(name = "cards", type = CardsView.class),
+		@XmlElement(name = "kanban", type = KanbanView.class),
+		@XmlElement(name = "custom", type = CustomView.class),
 		@XmlElement(name = "search-filters", type = SearchFilters.class),
 	})
 	private List<AbstractView> views;
@@ -91,7 +97,7 @@ public class ObjectViews {
 		@XmlElement(name = "action-import", type=ActionImport.class),
 		@XmlElement(name = "action-export", type=ActionExport.class),
 		@XmlElement(name = "action-group", type=ActionGroup.class),
-		@XmlElement(name = "action-workflow", type=ActionWorkflow.class)
+		@XmlElement(name = "action-report", type=ActionReport.class),
 	})
 	private List<Action> actions;
 	

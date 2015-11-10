@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,33 +15,14 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+/* jshint newcap: false */
+/* global CodeMirror: true */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
-
-var SpaceIndentKeys = {
-	Tab: function (cm) {
-		var sel = cm.doc.sel;
-		if (sel.from.line !== sel.to.line) {
-			return CodeMirror.Pass;
-		}
-		var spaces = Array(cm.getOption("indentUnit") + 1).join(" ");
-		cm.replaceSelection(spaces, "end", "+input");
-	},
-	Backspace: function (cm) {
-		var cur = cm.getCursor(),
-			num = cm.getOption("indentUnit"),
-			line = cm.getLine(cur.line),
-			space = line.substring(cur.ch - num, cur.ch);
-		
-		if (space.length > 0 && space.trim() === "") {
-			cm.setSelection({line: cur.line, ch: cur.ch - num}, cur);
-			cm.replaceSelection("");
-			return true;
-		}
-		return CodeMirror.Pass;
-	}
-};
 
 ui.formInput('CodeEditor', {
 
@@ -71,8 +52,7 @@ ui.formInput('CodeEditor', {
 				autoCloseTags : true,
 				tabSize : 2,
 				indentUnit : 2,
-				indentWithTabs: false,
-				extraKeys : SpaceIndentKeys
+				indentWithTabs: false
 			});
 		}
 
@@ -145,4 +125,4 @@ ui.formInput('CodeEditor', {
 	template: '<div ng-transclude></div>'
 });
 
-})(this);
+})();

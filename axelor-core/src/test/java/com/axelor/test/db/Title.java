@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -27,8 +27,7 @@ import javax.persistence.Table;
 import javax.validation.constraints.NotNull;
 
 import com.axelor.db.Model;
-import com.google.common.base.Objects;
-import com.google.common.base.Objects.ToStringHelper;
+import com.google.common.base.MoreObjects;
 
 @Entity
 @Table(name = "CONTACT_TITLE")
@@ -73,12 +72,10 @@ public class Title extends Model {
 	
 	@Override
 	public String toString() {
-		ToStringHelper tsh = Objects.toStringHelper(getClass());
-		
-		tsh.add("id", getId());
-		tsh.add("code", getCode());
-		tsh.add("name", getName());
-		
-		return tsh.omitNullValues().toString();
+		return MoreObjects.toStringHelper(getClass())
+				.add("id", getId())
+				.add("code", getCode())
+				.add("name", getName())
+				.omitNullValues().toString();
 	}
 }

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -28,6 +28,18 @@ import com.axelor.tools.x2j.Generator
 class GenerateCode extends DefaultTask {
 
 	private static final Set<String> IGNORE = ["axelor-common", "axelor-test"]
+
+	public GenerateCode() {
+
+		// set inputs so that gradle can check for up-to-date
+		project.afterEvaluate {
+			outputs.dir "${project.buildDir}/src-gen"
+			inputs.files "${project.projectDir}/src/main/resources/domains"
+			findAllModules(project).each { Project p ->
+				inputs.files "${p.projectDir}/src/main/resources/domains"
+			}
+		}
+	}
 
 	def _findDeps(Project project) {
 		return project.configurations.compile.allDependencies.withType(ProjectDependency).collect { it.dependencyProject }

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,57 +15,204 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-angular.module('axelor.ui').directive('navTree', function() {
-	return {
-		restrict: 'EA',
-		require: '?ngModel',
-		scope: {
-			itemClick: '&' 
-		},
+(function() {
 
-		controller: ['$scope', '$element', 'MenuService', function($scope, $element, MenuService) {
+"use strict";
+
+var ui = angular.module('axelor.ui');
+
+ui.directive('uiNavTree', ['MenuService', function(MenuService) {
+
+	return {
+		scope: {
+			itemClick: "&"
+		},
+		controller: ["$scope", function ($scope) {
+
+			var items = [];
+			var menus = [];
+			var nodes = {};
+
+			var handler = $scope.itemClick();
 
 			function canAccept(item) {
 				return item.left || item.left === undefined;
 			}
 
-			$scope.load = function(parent, successFn) {
+			this.onClick = function (e, menu) {
+				if (menu.isFolder) {
+					return;
+				}
+				handler(e, menu);
+				MenuService.tags().success(function (res) {
+					this.update(res.data);
+				}.bind(this));
+			};
 
-				var name = parent ? parent.name : null;
+			this.load = function (data) {
+				if (!data || !data.length) return;
 
-				MenuService.get(name).success(function(res){
-					var items = res.data;
-					if (successFn) {
-						return successFn(items);
+				items = data;
+				items.forEach(function (item) {
+					nodes[item.name] = item;
+					item.children = [];
+				});
+
+				items.forEach(function (item) {
+					var node = nodes[item.parent];
+					if (node) {
+						node.children.push(item);
+						item.icon = null;
+					} else if (canAccept(item)){
+						menus.push(item);
 					}
+				});
 
-					if (name == null) {
-						items = _.filter(items, canAccept);
+				items.forEach(function (item) {
+					if (item.children.length === 0) {
+						delete item.children;
 					}
-					$element.navtree('addItems', items);
+				});
+				$scope.menus = menus;
+			};
+
+			this.update = function (data) {
+				if (!data || data.length === 0) return;
+				data.forEach(function (item) {
+					var node = nodes[item.name];
+					if (node) {
+						node.tag = item.tag;
+						node.tagStyle = item.tagStyle;
+						if (node.tagStyle) {
+							node.tagCss = "label-" + node.tagStyle;
+						}
+					}
 				});
 			};
 		}],
-		
-		link: function(scope, elem, attrs) {
+		link: function (scope, element, attrs, ctrl) {
 			
-			var onClickHandler = scope.itemClick();
+			MenuService.all().success(function (res) {
+				ctrl.load(res.data);
+			});
+		},
+		replace: true,
+		template:
+			"<ul class='nav nav-tree'>" +
+				"<li ng-repeat='menu in menus' ui-nav-sub-tree x-menu='menu'></li>" +
+			"</ul>"
+	};
+}]);
 
-			$(elem).navtree({
-				idField: 'name',
-				onLazyFetch: function(parent, successFn) {
-					scope.load(parent, successFn);
-				},
-				onClick: function(e, record) {
-					if (record.isFolder)
-						return;
-					onClickHandler(e, record);
+ui.directive('uiNavSubTree', ['$compile', function ($compile) {
+
+	return {
+		scope: {
+			menu: "="
+		},
+		require: "^uiNavTree",
+		link: function (scope, element, attrs, ctrl) {
+			var menu = scope.menu;
+			if (menu.icon && menu.icon.indexOf('fa') === 0) {
+				menu.fa = menu.icon;
+				delete menu.icon;
+			}
+			if (menu.tagStyle) {
+				menu.tagCss = "label-" + menu.tagStyle;
+			}
+			if (menu.children) {
+				var sub = $(
+					"<ul class='nav ui-nav-sub-tree'>" +
+						"<li ng-repeat='child in menu.children' ui-nav-sub-tree x-menu='child'></li>" +
+					"</ul>");
+				sub = $compile(sub)(scope);
+				sub.appendTo(element);
+			}
+
+			var animation = false;
+
+			function show(el) {
+
+				var parent = el.parent("li");
+
+				if (animation || parent.hasClass('open')) {
+					return;
+				}
+
+				function done() {
+					parent.addClass('open');
+					parent.removeClass('animate');
+					el.height('');
+					animation = false;
+				}
+
+				hide(parent.siblings("li.open").children('ul'));
+
+				animation = true;
+
+				parent.addClass('animate');
+				el.height(el[0].scrollHeight);
+
+				setTimeout(done, 300);
+			}
+
+			function hide(el) {
+
+				var parent = el.parent("li");
+
+				if (animation || !parent.hasClass('open')) {
+					return;
+				}
+
+				function done() {
+					parent.removeClass('open');
+					parent.removeClass('animate');
+					animation = false;
+				}
+
+				animation = true;
+
+				el.height(el.height())[0].offsetHeight;
+				parent.addClass('animate');
+				el.height(0);
+
+				setTimeout(done, 300);
+			}
+
+			element.on('click', '> a', function (e) {
+				e.preventDefault();
+
+				if (animation) return;
+
+				var $list = element.children('ul');
+
+				element.parents('.nav-tree').find('li.active').not(element).removeClass('active');
+				element.addClass('active');
+
+				if (!menu.isFolder) {
+					scope.applyLater(function () {
+						ctrl.onClick(e, menu);
+					});
+				}
+				if ($list.size() === 0) return;
+				if (element.hasClass('open')) {
+					hide($list);
+				} else {
+					show($list);
 				}
 			});
-
-			scope.load();
 		},
-		template: '<div></div>',
-		replace: true
+		replace: true,
+		template:
+			"<li ng-class='{folder: menu.children, tagged: menu.tag }'>" +
+				"<a href='#'>" +
+					"<img class='nav-image' ng-if='menu.icon' ng-src='{{menu.icon}}'></img>" +
+					"<i ng-if='menu.fa' class='nav-icon fa' ng-class='menu.fa'></i>" +
+					"<span class='nav-title'>{{menu.title}}</span>" +
+					"<span ng-show='menu.tag' ng-class='menu.tagCss' class='nav-tag label'>{{menu.tag}}</span>" +
+				"</a>" +
+			"</li>"
 	};
-});
+}]);
+
+})();

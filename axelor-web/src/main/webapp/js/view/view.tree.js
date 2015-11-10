@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -16,15 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 (function() {
+
+"use strict";
 	
 var ui = angular.module('axelor.ui');
 
-this.TreeViewCtrl = TreeViewCtrl;
-this.TreeViewCtrl.$inject = ['$scope', '$element', 'DataSource', 'ActionService'];
+ui.controller('TreeViewCtrl', TreeViewCtrl);
 
+TreeViewCtrl.$inject = ['$scope', '$element', 'DataSource', 'ActionService'];
 function TreeViewCtrl($scope, $element, DataSource, ActionService) {
 
-	var view = $scope._views['tree'];
+	var view = $scope._views.tree;
 	var viewPromise = $scope.loadView('tree', view.name);
 
 	$scope.applyLater(function() {
@@ -58,13 +60,13 @@ function TreeViewCtrl($scope, $element, DataSource, ActionService) {
 	$scope.onRefresh = function() {
 		
 	};
-	
-	$scope.sortAs = "";
-	$scope.sortBy = "";
 
 	$scope.onSort = function(column) {
-		$scope.sortAs = $scope.sortAs === "-" ? "" : "-";
-		$scope.sortBy = column.name;
+		if (column) {
+			column.sort = true;
+			column.desc = column.desc !== undefined && !column.desc;
+			column.sortCss = column.desc ? "slick-sort-indicator-desc" : "slick-sort-indicator-asc";
+		}
 		$scope.onRefresh();
 	};
 	
@@ -224,6 +226,15 @@ function Column(scope, col) {
 			var res = _.find(selection, function(item){
 				return cmp(item.value, value);
 			}) || {};
+
+			if (col.widget === 'ImageSelect' && res.icon) {
+				var image = "<img style='max-height: 24px;' src='" + (res.icon || res.value) + "'>";
+				if (col.labels === false) {
+					return image;
+				}
+				return image + " " + res.title;
+			}
+
 			return res.title;
 		}
 		switch(col.type) {
@@ -259,6 +270,7 @@ function Loader(scope, node, DataSource) {
 	
 	if (node.parent) {
 		domain = "self." + node.parent + ".id = :parentId";
+		ds._page.limit = -1;
 	}
 
 	if (node.domain) {
@@ -301,15 +313,15 @@ function Loader(scope, node, DataSource) {
 		var context = _.extend({}, scope._context),
 			current = item && item.$record;
 		
-		var sortBy = _.find(node.items, function(field) {
-			return field.as === scope.sortBy;
+		var sortOn = _.filter(scope.columns, function (col) { return col.sort; });
+		var sortBy = _.map(sortOn, function (col) {
+			var field = _.findWhere(node.items, { as: col.name });
+			if (field) {
+				return col.desc ? '-' + field.name : field.name;
+			}
 		});
 
-		if (sortBy) {
-			sortBy = scope.sortAs + sortBy.name;
-		}
-		
-		sortBy = sortBy || node.orderBy;
+		sortBy = _.compact(sortBy).join(',') || node.orderBy;
 
 		if (scope.getContext) {
 			context = _.extend(context, scope.getContext());
@@ -335,7 +347,7 @@ function Loader(scope, node, DataSource) {
 		});
 
 		if (sortBy) {
-			opts.sortBy = [sortBy];
+			opts.sortBy = sortBy.split(',');
 		}
 
 		var promise = ds.search(opts);
@@ -387,7 +399,7 @@ function Loader(scope, node, DataSource) {
 				'$parentId': parent && parent.id,
 				'$parentModel': current && current.$model,
 				'$draggable': node.draggable,
-				'$folder': child != null && (record._children === undefined || record._children > 0)
+				'$folder': child && (record._children === undefined || record._children > 0)
 			};
 
 			item.$expand = function(callback) {
@@ -418,7 +430,7 @@ function Loader(scope, node, DataSource) {
 
 			return item;
 		});
-	};
+	}
 
 	var page = {};
 	
@@ -448,7 +460,7 @@ function Loader(scope, node, DataSource) {
 	
 	this.pagerText = function() {
 		if (page && page.from !== undefined) {
-			if (page.total == 0) return null;
+			if (page.total === 0) return null;
 			return _t("{0} to {1} of {2}", page.from + 1, page.to, page.total);
 		}
 	};
@@ -554,7 +566,7 @@ ui.directive('uiViewTree', function(){
 			}
 			
 			function onDrop(e, ui) {
-				
+				/* jshint validthis: true */
 				var row = ui.draggable,
 					record = row.data('$record'),
 					current = $(this).data('$record'),
@@ -627,7 +639,7 @@ ui.directive('uiViewTree', function(){
 					helper: function() {
 						return $('<span></span>').append(row.children('td:first').clone());
 					},
-					opacity: .75,
+					opacity: 0.75,
 					containment: 'document',
 					refreshPositions: true,
 					revert: "invalid",
@@ -668,6 +680,19 @@ ui.directive('uiViewTree', function(){
 				acceptNodes(nodes);
 			};
 			
+			scope.onHeaderClick = function (event, column) {
+				if (!event.shiftKey) {
+					_.each(scope.columns, function (col) {
+						if (col !== column) {
+							col.sort = false;
+							col.desc = undefined;
+							col.sortCss = null;
+						}
+					});
+				}
+				scope.onSort(column);
+			};
+
 			var watcher = scope.$watch('loaders', function(loaders) {
 				
 				if (loaders === undefined) {
@@ -690,7 +715,7 @@ ui.directive('uiViewTree', function(){
 				
 				var tds = table.find('tr:first').find('td');
 				var ths = element.find('.tree-header').find('th');
-				var widths = new Array();
+				var widths = [];
 
 				if (tds.length !== ths.length) {
 					return;
@@ -717,7 +742,10 @@ ui.directive('uiViewTree', function(){
 			'<table class="tree-header">'+
 				'<thead>'+
 					'<tr>'+
-						'<th ng-repeat="column in columns" ng-class="column.css" ng-click="onSort(column)">{{column.title}}</th>'+
+						'<th ng-repeat="column in columns" ng-class="column.css" ng-click="onHeaderClick($event, column)">' +
+							'<span>{{column.title}}</span>'+
+							'<span ng-if="column.sort" class="slick-sort-indicator" ng-class="column.sortCss"></span>'+
+						'</th>'+
 					'</tr>'+
 				'</thead>'+
 			'</table>'+
@@ -753,4 +781,4 @@ ui.directive('uiPortletTree', function(){
 	};
 });
 
-}).call(this);
+})();

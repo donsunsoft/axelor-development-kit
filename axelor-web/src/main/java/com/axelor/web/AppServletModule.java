@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,10 +17,12 @@
  */
 package com.axelor.web;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.ws.rs.Path;
+import javax.ws.rs.ext.Provider;
 
 import org.apache.shiro.guice.web.GuiceShiroFilter;
 import org.slf4j.Logger;
@@ -30,30 +32,30 @@ import com.axelor.app.AppModule;
 import com.axelor.app.AppSettings;
 import com.axelor.app.internal.AppFilter;
 import com.axelor.auth.AuthModule;
-import com.axelor.common.reflections.Reflections;
 import com.axelor.db.JpaModule;
+import com.axelor.meta.MetaScanner;
 import com.axelor.quartz.SchedulerModule;
 import com.axelor.rpc.ObjectMapperProvider;
+import com.axelor.rpc.Request;
+import com.axelor.rpc.RequestFilter;
 import com.axelor.rpc.Response;
+import com.axelor.rpc.ResponseInterceptor;
+import com.axelor.web.servlet.CorsFilter;
+import com.axelor.web.servlet.I18nServlet;
+import com.axelor.web.servlet.InitServlet;
+import com.axelor.web.servlet.NoCacheFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.inject.Module;
+import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.matcher.Matchers;
 import com.google.inject.persist.PersistFilter;
 import com.google.inject.servlet.ServletModule;
-import com.sun.jersey.api.container.filter.GZIPContentEncodingFilter;
-import com.sun.jersey.api.core.PackagesResourceConfig;
-import com.sun.jersey.api.core.ResourceConfig;
-import com.sun.jersey.guice.JerseyServletModule;
-import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
 
 /**
  * The main application module.
  *
- * It configures JPA and Jersy, registers a custom jackson context resolver,
- * binds essential web services and configures {@link GuiceContainer} to server
- * the web services on <i>/ws/*</i>.
- *
  */
-public class AppServletModule extends JerseyServletModule {
+public class AppServletModule extends ServletModule {
 
 	private static final String DEFAULT_PERSISTANCE_UNIT = "persistenceUnit";
 
@@ -67,6 +69,19 @@ public class AppServletModule extends JerseyServletModule {
 
 	public AppServletModule(String jpaUnit) {
 		this.jpaUnit = jpaUnit;
+	}
+
+	protected List<? extends Module> getModules() {
+		final AppSettings settings = AppSettings.get();
+		final AuthModule authModule = new AuthModule(getServletContext()).properties(settings.getProperties());
+		final AppModule appModule = new AppModule();
+		final SchedulerModule schedulerModule = new SchedulerModule();
+		return Arrays.asList(authModule, appModule, schedulerModule);
+	}
+
+	protected void afterConfigureServlets() {
+		// register initialization servlet
+		serve("_init").with(InitServlet.class);
 	}
 
 	@Override
@@ -92,56 +107,58 @@ public class AppServletModule extends JerseyServletModule {
 
 			@Override
 			protected void configureServlets() {
-				// order is important, PersistFilter must be the first filter
+				// check for CORS requests earlier
+				filter("*").through(CorsFilter.class);
+				// order is important, PersistFilter must come first
 				filter("*").through(PersistFilter.class);
 				filter("*").through(AppFilter.class);
 				filter("*").through(GuiceShiroFilter.class);
 			}
 		});
 
-		// install the auth module
-		install(new AuthModule(getServletContext()).properties(settings.getProperties()));
-
-		// install the app modules
-		install(new AppModule());
-		
-		// install the scheduler module
-		install(new SchedulerModule());
+		// install additional modules
+		for (Module module : getModules()) {
+			install(module);
+		}
 
 		// no-cache filter
-		if (!settings.isProduction()) {
-			filter("*").through(NoCacheFilter.class);
-		}
+		filter("/js/*", NoCacheFilter.STATIC_URL_PATTERNS).through(NoCacheFilter.class);
+
+		// i18n bundle
+		serve("/js/messages.js").with(I18nServlet.class);
 
 		// intercept all response methods
 		bindInterceptor(Matchers.any(),
 				Matchers.returns(Matchers.subclassesOf(Response.class)),
 				new ResponseInterceptor());
 
+		// intercept request accepting methods
+		bindInterceptor(Matchers.annotatedWith(Path.class),
+				new AbstractMatcher<Method>() {
+					@Override
+					public boolean matches(Method t) {
+						for (Class<?> c : t.getParameterTypes()) {
+							if (Request.class.isAssignableFrom(c)) {
+								return true;
+							}
+						}
+						return false;
+					}
+				}, new RequestFilter());
+
 		// bind all the web service resources
-		for (Class<?> type : Reflections
+		for (Class<?> type : MetaScanner
 				.findTypes()
-				.within("com.axelor.web")
 				.having(Path.class)
-				.find()) {
+				.having(Provider.class)
+				.any().find()) {
 			bind(type);
 		}
 
 		// register the session listener
 		getServletContext().addListener(new AppSessionListener(settings));
 
-		Map<String, String> params = new HashMap<String, String>();
-
-		params.put(ResourceConfig.FEATURE_REDIRECT, "true");
-		params.put(PackagesResourceConfig.PROPERTY_PACKAGES, "com.axelor;");
-
-		// enable GZIP encoding filter
-		params.put(ResourceConfig.PROPERTY_CONTAINER_REQUEST_FILTERS,
-				GZIPContentEncodingFilter.class.getName());
-		params.put(ResourceConfig.PROPERTY_CONTAINER_RESPONSE_FILTERS,
-				GZIPContentEncodingFilter.class.getName());
-
-		serve("_init").with(InitServlet.class);
-		serve("/ws/*").with(GuiceContainer.class, params);
+		// run additional configuration tasks
+		this.afterConfigureServlets();
 	}
 }

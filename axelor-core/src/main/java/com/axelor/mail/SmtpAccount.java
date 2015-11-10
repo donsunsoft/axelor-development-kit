@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package com.axelor.mail;
+
+import static com.axelor.common.StringUtils.isBlank;
 
 import java.util.Properties;
 
@@ -32,20 +34,14 @@ import com.google.common.base.Preconditions;
  */
 public class SmtpAccount implements MailAccount {
 
-	public static final String ENCRYPTION_TLS = "tls";
-
-	public static final String ENCRYPTION_SSL = "ssl";
-
-	public static final String DEFAULT_PORT = "25";
-
 	private String host;
 	private String port;
 	private String user;
 	private String password;
-	private String encryption;
+	private String channel;
 
-	private int connectionTimeout = DEFAULT_TIMEOUT;
-	private int timeout = DEFAULT_TIMEOUT;
+	private int connectionTimeout = MailConstants.DEFAULT_TIMEOUT;
+	private int timeout = MailConstants.DEFAULT_TIMEOUT;
 
 	private Properties properties;
 
@@ -53,7 +49,7 @@ public class SmtpAccount implements MailAccount {
 
 	/**
 	 * Create a non-authenticating SMTP account.
-	 * 
+	 *
 	 * @param host
 	 *            the smtp server host
 	 * @param port
@@ -67,7 +63,7 @@ public class SmtpAccount implements MailAccount {
 
 	/**
 	 * Create an authenticating SMTP account.
-	 * 
+	 *
 	 * @param host
 	 *            the smtp server host
 	 * @param port
@@ -75,25 +71,41 @@ public class SmtpAccount implements MailAccount {
 	 * @param user
 	 *            the smtp server login user name
 	 * @param password
-	 *            the smtp server login passowrd
-	 * @param encryption
-	 *            the smtp encryption scheme (tls or ssl)
+	 *            the smtp server login password
 	 */
-	public SmtpAccount(String host, String port, String user, String password, String encryption) {
+	public SmtpAccount(String host, String port, String user, String password) {
 		this(host, port);
 		this.user = user;
 		this.password = password;
-		this.encryption = encryption;
+	}
+
+	/**
+	 * Create an authenticating SMTP account.
+	 *
+	 * @param host
+	 *            the smtp server host
+	 * @param port
+	 *            the smtp server port
+	 * @param user
+	 *            the smtp server login user name
+	 * @param password
+	 *            the smtp server login password
+	 * @param channel
+	 *            the smtp encryption channel (starttls or ssl)
+	 */
+	public SmtpAccount(String host, String port, String user, String password, String channel) {
+		this(host, port, user, password);
+		this.channel = channel;
 	}
 
 	private Session init() {
 
 		final boolean authenticating = !StringUtils.isBlank(user);
 		final Properties props = new Properties();
-		final String port = StringUtils.isBlank(this.port) ? DEFAULT_PORT : this.port;
 
-		props.setProperty("mail.smtp.connectiontimeout", "" + DEFAULT_TIMEOUT);
-		props.setProperty("mail.smtp.timeout", "" + DEFAULT_TIMEOUT);
+		// set timeout
+		props.setProperty("mail.smtp.connectiontimeout", "" + connectionTimeout);
+		props.setProperty("mail.smtp.timeout", "" + timeout);
 
 		if (properties != null) {
 			props.putAll(properties);
@@ -103,32 +115,25 @@ public class SmtpAccount implements MailAccount {
 		props.setProperty("mail.smtp.port", port);
 		props.setProperty("mail.smtp.auth", "" + authenticating);
 
-		if (!StringUtils.isBlank(user)) {
+		if (!isBlank(user)) {
 			props.setProperty("mail.smtp.from", user);
-		}
-
-		// respect manually set timeout
-		if (connectionTimeout != DEFAULT_TIMEOUT) {
-			props.setProperty("mail.smtp.connectiontimeout", "" + connectionTimeout);
-		}
-		if (timeout != DEFAULT_TIMEOUT) {
-			props.setProperty("mail.smtp.timeout", "" + timeout);
 		}
 
 		if (!authenticating) {
 			return Session.getInstance(props);
 		}
-		
-		if (ENCRYPTION_TLS.equals(encryption)) {
+
+		if (MailConstants.CHANNEL_STARTTLS.equalsIgnoreCase(channel)) {
 			props.setProperty("mail.smtp.starttls.enable", "true");
 		}
-		if (ENCRYPTION_SSL.equals(encryption)) {
+		if (MailConstants.CHANNEL_SSL.equalsIgnoreCase(channel)) {
+			props.setProperty("mail.smtp.ssl.enable", "true");
 			props.setProperty("mail.smtp.socketFactory.port", port);
 			props.setProperty("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");
 		}
-		
+
 		final Authenticator authenticator = new Authenticator() {
-			
+
 			@Override
 			protected PasswordAuthentication getPasswordAuthentication() {
 				return new PasswordAuthentication(user, password);

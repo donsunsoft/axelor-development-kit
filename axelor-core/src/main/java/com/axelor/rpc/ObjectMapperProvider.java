@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,7 +17,8 @@
  */
 package com.axelor.rpc;
 
-import groovy.lang.GString;
+import static com.axelor.common.StringUtils.isBlank;
+import static com.axelor.meta.loader.ModuleManager.isInstalled;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -32,10 +33,15 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
 import org.joda.time.LocalTime;
 
-import com.axelor.common.StringUtils;
+import com.axelor.auth.AuthUtils;
+import com.axelor.auth.db.User;
 import com.axelor.db.Model;
-import com.axelor.meta.loader.ModuleManager;
+import com.axelor.inject.Beans;
+import com.axelor.meta.MetaPermissions;
+import com.axelor.meta.db.MetaPermissionRule;
 import com.axelor.meta.schema.views.AbstractWidget;
+import com.axelor.meta.schema.views.SimpleWidget;
+import com.axelor.script.ScriptHelper;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.BeanDescription;
@@ -50,6 +56,8 @@ import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
+
+import groovy.lang.GString;
 
 @Singleton
 public class ObjectMapperProvider implements Provider<ObjectMapper> {
@@ -133,6 +141,59 @@ public class ObjectMapperProvider implements Provider<ObjectMapper> {
 
 	static class WidgetListSerializer extends JsonSerializer<List<AbstractWidget>> {
 
+		private boolean test(AbstractWidget widget) {
+
+			final String module = widget.getModuleToCheck();
+			final String condition =  widget.getConditionToCheck();
+			if (!isBlank(module) && !isInstalled(module)) {
+				return false;
+			}
+			if (isBlank(condition)) {
+				return true;
+			}
+
+			final Request request = Request.current();
+			if (request == null) {
+				return true;
+			}
+
+			final ScriptHelper helper = request.getScriptHelper();
+			return helper.test(condition);
+		}
+
+		private boolean hasAccess(AbstractWidget widget) {
+			if (!(widget instanceof SimpleWidget)) {
+				return true;
+			}
+			final SimpleWidget item = (SimpleWidget) widget;
+			final String object = item.getModel();
+			final String field = item.getName();
+			if (isBlank(object) || isBlank(field)) {
+				return true;
+			}
+			final User user = AuthUtils.getUser();
+			if (user == null || AuthUtils.isAdmin(user)) {
+				return true;
+			}
+			final MetaPermissions perms = Beans.get(MetaPermissions.class);
+			final MetaPermissionRule rule = perms.findRule(user, object, field);
+			if (rule == null) {
+				return true;
+			}
+
+			if (item.getReadonlyIf() == null && rule.getReadonlyIf() != null) {
+				item.setReadonlyIf(rule.getReadonlyIf());
+			}
+			if (item.getHideIf() == null && rule.getHideIf() != null) {
+				item.setHideIf(rule.getHideIf());
+			}
+			if (rule.getCanWrite() != Boolean.TRUE) {
+				item.setReadonly(true);
+			}
+
+			return rule.getCanRead() == Boolean.TRUE;
+		}
+
 		@Override
 		public void serialize(List<AbstractWidget> value, JsonGenerator jgen,
 				SerializerProvider provider) throws IOException,
@@ -145,12 +206,11 @@ public class ObjectMapperProvider implements Provider<ObjectMapper> {
 			jgen.writeStartArray();
 			
 			for (AbstractWidget widget : value) {
-				String module = widget.getModuleToCheck();
-				if (StringUtils.isBlank(module) || ModuleManager.isInstalled(module)) {
+				if (test(widget) && hasAccess(widget)) {
 					jgen.writeObject(widget);
 				}
 			}
-			
+
 			jgen.writeEndArray();
 		}
 	}

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <object-views xmlns="http://axelor.com/xml/ns/object-views"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_3.0.xsd">
+  xsi:schemaLocation="http://axelor.com/xml/ns/object-views http://axelor.com/xml/ns/object-views/object-views_4.0.xsd">
 
-  <menuitem name="menu-admin" title="Administration" priority="-100" groups="admins" icon="img/wrench.png"/>
+  <menuitem name="menu-admin" title="Administration" order="100" groups="admins" icon="fa-wrench"/>
   <menuitem name="menu-auth" parent="menu-admin" title="User Management" />
   <menuitem name="menu-model" title="Model Management" parent="menu-admin"/>
   <menuitem name="menu-view-management" title="View Management" parent="menu-admin"/>
@@ -26,7 +26,7 @@
     <view type="grid" name="group-grid" />
     <view type="form" name="group-form" />
   </action-view>
-
+  
   <menuitem name="menu-auth-roles" parent="menu-auth" title="Roles"
     action="action-auth-roles" />
 
@@ -70,6 +70,16 @@
   <action-view name="action-meta-views" title="Views" model="com.axelor.meta.db.MetaView">
     <view type="grid" name="meta-view-grid"/>
     <view type="form" name="meta-view-form"/>
+  </action-view>
+
+  <menuitem name="menu-view-my" parent="menu-view-management"
+    title="My Views"
+    action="action-meta-views-my"/>
+
+  <action-view name="action-meta-views-my" title="My Views" model="com.axelor.meta.db.MetaViewCustom">
+    <view type="grid" name="meta-view-custom-grid"/>
+    <view type="form" name="meta-view-custom-form"/>
+    <domain>self.user = :__user__</domain>
   </action-view>
 
   <menuitem name="menu-view-menus" parent="menu-view-management"

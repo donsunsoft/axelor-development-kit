@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -15,7 +15,11 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-(function(){
+(function() {
+
+/* jshint validthis: true */
+
+"use strict";
 
 var ui = angular.module('axelor.ui');
 
@@ -38,9 +42,9 @@ ui.formInput('Number', {
 			pattern = isDecimal ? /^(-)?\d+(\.\d+)?$/ : /^\s*-?[0-9]*\s*$/;
 		
 		function scale() {
-			var scale = scope.attr('scale');
-			if (scale) {
-				return scale;
+			var value = scope.attr('scale');
+			if (value) {
+				return value;
 			}
 			if ((props.widgetAttrs||{}).scale) {
 				return props.widgetAttrs.scale;
@@ -49,9 +53,9 @@ ui.formInput('Number', {
 		}
 
 		function precision() {
-			var precision = scope.attr('precision');
-			if (precision) {
-				return precision;
+			var value = scope.attr('precision');
+			if (value) {
+				return value;
 			}
 			if ((props.widgetAttrs||{}).precision) {
 				return props.widgetAttrs.precision;
@@ -152,7 +156,7 @@ ui.formInput('Number', {
 
 			if (equals(val, old)) {
 				return handleChange();
-			};
+			}
 
 			scope.setValue(val);
 			scope.applyLater();
@@ -223,4 +227,4 @@ ui.formInput('Number', {
 	}
 });
 
-})(this);
+})();

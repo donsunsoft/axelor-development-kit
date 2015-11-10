@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -124,12 +124,25 @@ public class JpaRepository<T extends Model> implements Repository<T> {
 		JPA.flush();
 	}
 
+	@Override
+	public Map<String, Object> validate(Map<String, Object> json, Map<String, Object> context) {
+		return json;
+	}
+
+	@Override
+	public Map<String, Object> populate(Map<String, Object> json, Map<String, Object> context) {
+		return json;
+	}
+
 	@SuppressWarnings("unchecked")
 	public static  <U extends Model>  JpaRepository<U> of(Class<U> type) {
 		final Class<?> klass = JpaScanner.findRepository(type.getSimpleName() + "Repository");
-		if (klass == null) {
-			return null;
+		if (klass != null) {
+			final JpaRepository<U> repo = (JpaRepository<U>) Beans.get(klass);
+			if (repo.modelClass.isAssignableFrom(type)) {
+				return repo;
+			}
 		}
-		return (JpaRepository<U>) Beans.get(klass);
+		return Beans.inject(new JpaRepository<>(type));
 	}
 }

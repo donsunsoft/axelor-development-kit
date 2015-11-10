@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -29,9 +29,6 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 @XmlType
 @JsonTypeName("form")
 public class FormView extends AbstractView {
-
-	@XmlAttribute
-	private String css;
 
 	@XmlAttribute
 	private Integer cols;
@@ -88,17 +85,10 @@ public class FormView extends AbstractView {
         @XmlElement(name = "panel-dashlet", type = Dashlet.class),
         @XmlElement(name = "panel-related", type = PanelRelated.class),
         @XmlElement(name = "panel-stack", type = PanelStack.class),
-        @XmlElement(name = "panel-tabs", type = PanelTabs.class)
+        @XmlElement(name = "panel-tabs", type = PanelTabs.class),
+        @XmlElement(name = "panel-mail", type = PanelMail.class)
 	})
 	private List<AbstractWidget> items;
-
-	public String getCss() {
-		return css;
-	}
-
-	public void setCss(String css) {
-		this.css = css;
-	}
 
 	public Integer getCols() {
 		return cols;

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2014 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -17,12 +17,14 @@
  */
 (function() {
 
+"use strict";
+
 var ui = angular.module('axelor.ui');
 
 PortalCtrl.$inject = ['$scope', '$element'];
 function PortalCtrl($scope, $element) {
 
-	var view = $scope._views['portal'];
+	var view = $scope._views.portal;
 	if (view.items) {
 		$scope.$timeout(function () {
 			$scope.parse(view);
@@ -140,7 +142,7 @@ function PortletCtrl($scope, $element, MenuService, DataSource, ViewService) {
 	
 	function init() {
 		
-		ViewCtrl.call(self, $scope, DataSource, ViewService);
+		ui.ViewCtrl.call(self, $scope, DataSource, ViewService);
 		
 		$scope.show = function() {
 
@@ -221,13 +223,14 @@ ui.directive('uiViewPortlet', ['$compile', function($compile){
 							}
 
 							if (element.parent().is(":hidden")) {
-								return lazy = true;
+								lazy = true;
+								return;
 							}
 
 							unwatch();
 							unwatch = null;
 
-							var ctx = undefined;
+							var ctx;
 							if (scope.getContext) {
 								ctx = scope.getContext();
 							}
@@ -236,7 +239,7 @@ ui.directive('uiViewPortlet', ['$compile', function($compile){
 							});
 						});
 					});
-				}
+				};
 			})()();
 
 			scope.parsePortlet = _.once(function(view) {
@@ -282,7 +285,7 @@ ui.directive('uiViewPortlet', ['$compile', function($compile){
 				'<div class="portlet-header navbar">'+
 					'<div class="navbar-inner">'+
 						'<div class="container-fluid">'+
-							'<span class="brand" ng-bind-html-unsafe="title"></span>'+
+							'<span class="brand" ng-bind-html="title"></span>'+
 							'<ul class="nav pull-right">'+
 								'<li class="portlet-pager" ng-show="showPager">'+
 									'<span class="portlet-pager-text">{{pagerText()}}</span>'+
@@ -379,7 +382,7 @@ ui.directive('uiPortalTab', function() {
 			$scope.isNested = true;
 			$scope._model = null;
 
-			ViewCtrl.apply(this, arguments);
+			ui.ViewCtrl.apply(this, arguments);
 		}],
 		template: "<div ui-view-portal></div>"
 	};
