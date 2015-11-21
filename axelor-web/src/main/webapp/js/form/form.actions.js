@@ -500,7 +500,7 @@ ActionHandler.prototype = {
 			});
 		}
 
-		pattern = /(,)?\s*(close)\s*,/;
+		pattern = /(^|,)\s*(close)\s*,/;
 		if (pattern.test(action)) {
 			axelor.dialogs.error(_t('Invalid use of "{0}" action, must be the last action.', pattern.exec(action)[2]));
 			deferred.reject();
@@ -899,14 +899,16 @@ ActionHandler.prototype = {
 				return deferred.promise;
 			}
 
-			var url = "ws/files/report/" + data.reportLink;
+			var url = "ws/files/report/" + data.reportLink + "?name=" + data.reportFile;
 			var tab = {
 				title: data.reportFile,
 				resource: url,
 				viewType: 'html'
 			};
 
-			if (['pdf', 'html'].indexOf(data.reportFormat) > -1) {
+			if (axelor.device.mobile && data.reportFormat !== "html") {
+				ui.download(url, data.reportFile);
+			} else if (['pdf', 'html'].indexOf(data.reportFormat) > -1) {
 				doOpenView(tab);
 			} else {
 				ui.download(url);
