@@ -184,6 +184,10 @@ final class AuditTracker {
 				hasEvent(tm, previousState == null ? TrackEvent.CREATE : TrackEvent.UPDATE)) {
 				boolean matched = tm.fields().length == 0;
 				for (String field : tm.fields()) {
+					if (isBlank(field)) {
+						matched = true;
+						break;
+					}
 					matched = previousState != null && !Objects.equal(values.get(field), oldValues.get(field));
 					if (matched) {
 						break;
@@ -218,21 +222,19 @@ final class AuditTracker {
 			final Object value = values.get(name);
 			final Object oldValue = oldValues.get(name);
 
-			String dispayValue = format(property, value);
-			if (previousState != null) {
-				if (Objects.equal(value, oldValue)) {
-					continue;
-				}
-				if (oldValue != null) {
-					dispayValue = format(property, oldValue) + " &raquo; " + dispayValue;
-				}
+			if (previousState != null && Objects.equal(value, oldValue)) {
+				continue;
 			}
 
 			tagFields.add(name);
 
 			final Map<String, String> item = new HashMap<>();
 			item.put("title", title);
-			item.put("value", dispayValue);
+			item.put("value", format(property, value));
+
+			if (oldValue != null) {
+				item.put("oldValue", format(property, oldValue));
+			}
 
 			tracks.add(item);
 		}
