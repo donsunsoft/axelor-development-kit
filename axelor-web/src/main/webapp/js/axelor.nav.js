@@ -113,6 +113,11 @@ app.factory('NavService', ['$location', 'MenuService', function($location, MenuS
 
 		function __doSelect(found) {
 
+			var lastScope = (selected||{}).$viewScope || {};
+			if (lastScope.$locationChangeOff) {
+				lastScope.$locationChangeOff();
+			}
+
 			found.selected = true;
 			selected = found;
 
@@ -329,6 +334,12 @@ NavCtrl.$inject = ['$scope', '$rootScope', '$location', 'NavService'];
 function NavCtrl($scope, $rootScope, $location, NavService) {
 
 	$scope.singleTabOnly = useSingleTabOnly();
+
+	Object.defineProperty($scope, '$location', {
+		get: function() {
+			return $location;
+		}
+	});
 
 	Object.defineProperty($scope, 'navTabs', {
 		get: function() {

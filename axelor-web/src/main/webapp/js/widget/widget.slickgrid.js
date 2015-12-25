@@ -439,7 +439,7 @@ _.extend(Factory.prototype, {
 		
 		var field = columnDef.descriptor || {},
 			attrs = _.extend({}, field, field.widgetAttrs),
-			widget = attrs.widget,
+			widget = attrs.widget || "",
 			type = attrs.type;
 
 		if (widget === "Progress" || widget === "progress" || widget === "SelectProgress") {
@@ -455,6 +455,17 @@ _.extend(Factory.prototype, {
 
 		if(["Url", "url", "duration"].indexOf(widget) > 0) {
 			type = widget.toLowerCase();
+		}
+
+		if (widget.toLowerCase() === "image" || (type === "binary" && field.name === "image")) {
+			if (field.target === "com.axelor.meta.db.MetaFile") {
+				if (value) {
+					return ui.makeImageURL("com.axelor.meta.db.MetaFile", "content", (value.id || value));
+				}
+				return "";
+			}
+			var url = ui.makeImageURL(this.grid.handler._model, field.name, dataContext);
+			return '<img src="' + url + '&image=true" style="height: 21px;margin-top: -2px;">';
 		}
 
 		var fn = Formatters[type];
@@ -675,7 +686,7 @@ Grid.prototype.parse = function(view) {
 
 	// create edit column
 	var editColumn = null;
-	if (!scope.selector && view.editIcon && (!handler.hasPermission || handler.hasPermission('write'))) {
+	if (view.editIcon && (!scope.selector || scope.selector === "checkbox") && (!handler.hasPermission || handler.hasPermission('write'))) {
 		editColumn = new EditIconColumn({
 			onClick: function (e, args) {
 				if (e.isDefaultPrevented()) {
@@ -736,7 +747,7 @@ Grid.prototype.parse = function(view) {
 
 	var options = {
 		rowHeight: 26,
-		editable: view.editable,
+		editable: view.editable && !axelor.device.mobile,
 		editorFactory:  factory,
 		formatterFactory: factory,
 		enableCellNavigation: true,
@@ -1796,7 +1807,7 @@ Grid.prototype.setEditors = function(form, formScope, forEdit) {
 	this.editable = forEdit = forEdit === undefined ? true : forEdit;
 
 	grid.setOptions({
-		editable: true,
+		editable: !axelor.device.mobile,
 		asyncEditorLoading: false,
 		editorLock: new Slick.EditorLock()
 	});
@@ -2388,6 +2399,10 @@ ui.directive('uiSlickGrid', ['ViewService', 'ActionService', function(ViewServic
 				}
 				scope.selector = attrs.selector;
 				scope.noFilter = attrs.noFilter;
+
+				if (axelor.config["view.grid.selection"] === "checkbox" && !scope.selector) {
+					scope.selector = "checkbox";
+				}
 
 				var forEdit = schema.editable || false,
 					canEdit = schema.editable || false,
