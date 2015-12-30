@@ -39,10 +39,14 @@ import javax.persistence.EntityTransaction;
 import javax.persistence.OptimisticLockException;
 
 import org.hibernate.StaleObjectStateException;
+import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.axelor.auth.AuthUtils;
+import com.axelor.auth.db.User;
 import com.axelor.common.Inflector;
 import com.axelor.db.EntityHelper;
 import com.axelor.db.JPA;
@@ -57,6 +61,7 @@ import com.axelor.db.mapper.Property;
 import com.axelor.db.mapper.PropertyType;
 import com.axelor.i18n.I18n;
 import com.axelor.i18n.I18nBundle;
+import com.axelor.i18n.L10n;
 import com.axelor.inject.Beans;
 import com.axelor.meta.MetaPermissions;
 import com.axelor.meta.MetaStore;
@@ -502,6 +507,8 @@ public class Resource<T extends Model> {
 
 		List<?> data = selector.values(limit, offset);
 
+		final L10n formatter = L10n.getInstance();
+
 		while(!data.isEmpty()) {
 
 			for(Object item : data) {
@@ -513,6 +520,18 @@ public class Resource<T extends Model> {
 					Object objValue = value == null ? "" : value;
 					if(selection.containsKey(index-3)) {
 						objValue = selection.get(index-3).get(objValue.toString());
+					}
+					if (objValue instanceof Number) {
+						objValue = formatter.format((Number) objValue);
+					}
+					if (objValue instanceof LocalDate) {
+						objValue = formatter.format((LocalDate) objValue);
+					}
+					if (objValue instanceof LocalDateTime) {
+						objValue = formatter.format((LocalDateTime) objValue);
+					}
+					if (objValue instanceof DateTime) {
+						objValue = formatter.format((DateTime) objValue);
 					}
 					String strValue = objValue == null ? "" : escapeCsv(objValue.toString());
 					line.add(strValue);
@@ -570,6 +589,10 @@ public class Resource<T extends Model> {
 			if (act != null) {
 				values.put("__actionSelect", toMapCompact(act));
 			}
+		}
+		// don't include password if not requested
+		if (entity instanceof User && !request.getFields().contains("password")) {
+			values.remove("password");
 		}
 
 		data.add(repository.populate(values, request.getContext()));

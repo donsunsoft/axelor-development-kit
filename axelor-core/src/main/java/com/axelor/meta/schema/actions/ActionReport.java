@@ -18,48 +18,40 @@
 package com.axelor.meta.schema.actions;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlType;
 
+import org.eclipse.birt.core.exception.BirtException;
 import org.joda.time.DateTime;
 
-import com.axelor.app.AppSettings;
+import com.axelor.app.internal.AppFilter;
 import com.axelor.db.JPA;
+import com.axelor.db.Model;
 import com.axelor.i18n.I18n;
 import com.axelor.inject.Beans;
 import com.axelor.meta.ActionHandler;
-import com.axelor.meta.db.MetaAttachment;
-import com.axelor.meta.db.MetaFile;
-import com.axelor.meta.db.repo.MetaAttachmentRepository;
+import com.axelor.meta.MetaFiles;
 import com.axelor.report.ReportGenerator;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.Throwables;
-import com.google.common.io.Files;
 
 public class ActionReport extends Action {
+
+	private static final String DEFAULT_FORMAT = "pdf";
 
 	@XmlType
 	public static class Parameter extends ActionRecord.RecordField {
 
 	}
-
-	private static final String DEFAULT_UPLOAD_DIR = "{java.io.tmpdir}/axelor/attachments";
-	private static final String DEFAULT_TEMP_DIR = "{java.io.tmpdir}/axelor/reports-gen";
-	private static final String DEFAULT_FORMAT = "pdf";
-
-	private static final Path UPLOAD_DIR = Paths.get(AppSettings.get().getPath("file.upload.dir", DEFAULT_UPLOAD_DIR));
-	private static final Path TEMP_DIR = Paths.get(AppSettings.get().getPath("reports.output.dir", DEFAULT_TEMP_DIR));
 
 	@XmlAttribute
 	private String title;
@@ -76,7 +68,7 @@ public class ActionReport extends Action {
 	@XmlAttribute
 	private Boolean attachment;
 
-	@XmlElement(name = "parameter")
+	@XmlElement(name = "param")
 	private List<Parameter> parameters;
 
 	@JsonGetter("title")
@@ -109,13 +101,12 @@ public class ActionReport extends Action {
 		return parameters;
 	}
 
-	public static File getOutputPath() {
-		return TEMP_DIR.toFile();
-	}
+	private Object _evaluate(ActionHandler handler) throws IOException, BirtException {
+		log.debug("action-report: {}", getName());
 
-	private File render(ActionHandler handler, String fileName) throws IOException {
+		final Map<String, Object> params = new HashMap<>();
+		final ReportGenerator generator = Beans.get(ReportGenerator.class);
 
-		Map<String, Object> params = new HashMap<>();
 		if (parameters != null) {
 			for (Parameter param : parameters) {
 				if (param.test(handler)) {
@@ -126,64 +117,6 @@ public class ActionReport extends Action {
 
 		log.debug("with params: {}", params);
 
-		final File output = TEMP_DIR.resolve(fileName).toFile();
-		final ReportGenerator generator = Beans.get(ReportGenerator.class);
-
-		Files.createParentDirs(output);
-
-		try(FileOutputStream stream = new FileOutputStream(output)) {
-			generator.generate(stream, designName, format, params);
-		} catch (Exception e) {
-			throw Throwables.propagate(e);
-		}
-
-		return output;
-	}
-
-	private Object attach(File tempFile, String name, Class<?> model, Long id) throws IOException {
-
-		Path relative = Paths.get("reports", tempFile.getName());
-		Path target = UPLOAD_DIR.resolve(relative);
-
-
-		Files.createParentDirs(target.toFile());
-		Files.move(tempFile, target.toFile());
-
-		final MetaFile metaFile = new MetaFile();
-		metaFile.setFileName(name);
-		metaFile.setFilePath(relative.toString());
-		metaFile.setFileSize(tempFile.length());
-
-		String mime = java.nio.file.Files.probeContentType(tempFile.toPath());
-		if (mime == null) {
-			if (format.equals("pdf")) mime = "application/pdf";
-			if (format.equals("doc")) mime = "application/msword";
-			if (format.equals("ps")) mime = "application/postscript";
-			if (format.equals("html")) mime = "text/html";
-		}
-
-		metaFile.setFileType(mime);
-
-		final MetaAttachment metaAttachment = new MetaAttachment();
-		metaAttachment.setObjectName(model.getName());
-		metaAttachment.setObjectId(id);
-		metaAttachment.setMetaFile(metaFile);
-
-		final MetaAttachmentRepository repository = Beans.get(MetaAttachmentRepository.class);
-		JPA.runInTransaction(new Runnable() {
-
-			@Override
-			public void run() {
-				repository.save(metaAttachment);
-			}
-		});
-
-		return metaAttachment;
-	}
-
-	private Object _evaluate(ActionHandler handler) throws IOException {
-		log.debug("action-report: {}", getName());
-
 		final Map<String, Object> result = new HashMap<>();
 		final Class<?> klass = handler.getContext().getContextClass();
 		final Long id = (Long) handler.getContext().get("id");
@@ -193,10 +126,8 @@ public class ActionReport extends Action {
 				.replace("${time}", new DateTime().toString("HHmmss"))
 				.replace("${name}", getName());
 
-		final Long rnd = Math.abs(UUID.randomUUID().getMostSignificantBits());
-		final String tempName = String.format("%s-%s.%s", outputName, rnd, format);
 		final String fileName = String.format("%s.%s", outputName, format);
-		final File output = render(handler, tempName);
+		final File output = generator.generate(designName, format, params, AppFilter.getLocale());
 
 		result.put("report", getName());
 		result.put("reportFile", fileName);
@@ -204,7 +135,10 @@ public class ActionReport extends Action {
 		result.put("reportFormat", format);
 
 		if (attachment == Boolean.TRUE && id != null) {
-			result.put("attached", attach(output, fileName, klass, id));
+			final Model bean = (Model) JPA.em().find(klass, id);
+			try (InputStream is = new FileInputStream(output)) {
+				result.put("attached", Beans.get(MetaFiles.class).attach(is, fileName, bean));
+			}
 		}
 
 		return result;
@@ -215,7 +149,6 @@ public class ActionReport extends Action {
 		try {
 			return _evaluate(handler);
 		} catch (Exception e) {
-			e.printStackTrace();
 			throw Throwables.propagate(e);
 		}
 	}

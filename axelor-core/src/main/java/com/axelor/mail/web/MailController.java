@@ -18,6 +18,7 @@
 package com.axelor.mail.web;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,7 +47,8 @@ public class MailController extends JpaSupport {
 	
 	private static final String SQL_UNREAD = ""
 			+ "SELECT COUNT(DISTINCT m) FROM MailMessage m LEFT JOIN m.flags g "
-			+ "WHERE (CONCAT(m.relatedId, m.relatedModel) IN "
+			+ "WHERE (m.parent IS NULL) AND "
+			+ "(CONCAT(m.relatedId, m.relatedModel) IN "
 			+ " (SELECT CONCAT(f.relatedId, f.relatedModel) FROM MailFollower f WHERE f.user.id = :uid AND f.archived = false)) AND "
 			+ "((g IS NULL) OR (g.user.id != :uid) OR (g.user.id = :uid AND g.isRead = false))";
 
@@ -82,6 +84,14 @@ public class MailController extends JpaSupport {
 
 	@Inject
 	private MailMessageRepository messages;
+
+	public void countMail(ActionRequest request, ActionResponse response) {
+		final Map<String, Object> value = new HashMap<>();
+		value.put("total", count(SQL_INBOX));
+		value.put("unread", countUnread());
+		response.setValue("mail", value);
+		response.setStatus(Response.STATUS_SUCCESS);
+	}
 
 	public void unread(ActionRequest request, ActionResponse response) {
 		response.setValue("unread", countUnread());

@@ -33,6 +33,8 @@ function makeURL(model, field, recordOrId) {
 	return "ws/rest/" + model + "/" + id + "/" + field + "/download?v=" + version;
 }
 
+ui.makeImageURL = makeURL;
+
 ui.formInput('ImageLink', {
 	css: 'image-item',
 	cssClass: 'from-item image-item',

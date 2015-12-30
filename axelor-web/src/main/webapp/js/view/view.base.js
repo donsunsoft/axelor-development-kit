@@ -490,16 +490,18 @@ ui.directive('uiViewPopup', function() {
 			scope.$watch('viewTitle', function (title) {
 				scope._setTitle(title);
 			});
-			
-			var unwatch = scope.$watch("_viewParams.$viewScope.schema.loaded", function(loaded) {
-				if (!loaded) {
-					return;
-				}
-				unwatch();
-				var viewScope = scope._viewParams.$viewScope;
-				var viewPromise = viewScope._viewPromise;
-				scope.viewTitle = viewScope.schema.title;
-				scope._doShow(viewPromise);
+
+			scope.waitForActions(function () {
+				var unwatch = scope.$watch("_viewParams.$viewScope.schema.loaded", function(loaded) {
+					if (!loaded) {
+						return;
+					}
+					unwatch();
+					var viewScope = scope._viewParams.$viewScope;
+					var viewPromise = viewScope._viewPromise;
+					scope.viewTitle = viewScope.schema.title;
+					scope._doShow(viewPromise);
+				});
 			});
 		},
 		replace: true,
@@ -549,6 +551,65 @@ ui.directive('uiRecordPager', function(){
 	    '</div>'
 	};
 });
+
+ui.directive('uiViewCustomize', ['NavService', function(NavService) {
+
+	return {
+		scope: true,
+		link: function (scope, element, attrs) {
+
+			scope.canShow = function () {
+				if (!axelor.config['user.technical']) {
+					return false;
+				}
+				var viewScope = scope.selectedTab.$viewScope;
+				var view = viewScope && viewScope.schema;
+				return view && (view.viewId || view.modelId);
+			};
+
+			scope.hasViewID = function () {
+				var viewScope = scope.selectedTab.$viewScope;
+				var view = viewScope && viewScope.schema;
+				return view && view.viewId;
+			};
+
+			scope.hasModelID = function () {
+				var viewScope = scope.selectedTab.$viewScope;
+				var view = viewScope && viewScope.schema;
+				return view && view.modelId;
+			}
+
+			scope.onShowView = function () {
+				var id = scope.hasViewID();
+				NavService.openTabByName("form::com.axelor.meta.db.MetaView", {
+					mode: "edit",
+					state: id
+				});
+			}
+
+			scope.onShowModel = function () {
+				var id = scope.hasModelID();
+				NavService.openTabByName("form::com.axelor.meta.db.MetaModel", {
+					mode: "edit",
+					state: id
+				});
+			}
+		},
+		replace: true,
+		template:
+			"<ul ng-show='canShow()' class='nav menu-bar view-customize hidden-phone'>" +
+				"<li class='dropdown menu'>" +
+					"<a class='dropdown-toggle btn' data-toggle='dropdown' title='{{ \"Customize...\" | t}}'>" +
+						"<i class='fa fa-wrench'></i>" +
+					"</a>" +
+					"<ul class='dropdown-menu pull-right'>" +
+						"<li><a ng-click='onShowView()' ng-show='hasViewID()'>View...</a></li>" +
+						"<li><a ng-click='onShowModel()' ng-show='hasModelID()'>Model...</a></li>" +
+					"</ul>" +
+				"</li>" +
+			"</ul>"
+	};
+}]);
 
 ui.directive('uiViewSwitcher', function(){
 	return {
