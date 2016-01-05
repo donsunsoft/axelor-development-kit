@@ -21,34 +21,16 @@
 
 var ui = angular.module('axelor.ui');
 
-ui.factory('MessageService', ['$q', '$timeout', 'DataSource', function($q, $timeout, DataSource) {
-
-	var POLL_INTERVAL = 10000;
+ui.factory('MessageService', ['$q', '$timeout', 'DataSource', 'TagService', function($q, $timeout, DataSource, TagService) {
 
 	var dsFlags = DataSource.create('com.axelor.mail.db.MailFlags');
 	var dsMessage = DataSource.create('com.axelor.mail.db.MailMessage');
 
 	var pollResult = {};
-	var pollPromise = null;
 
-	function checkUnreadMessages() {
-
-		if (pollPromise) {
-			$timeout.cancel(pollPromise);
-		}
-
-		var params = {
-			folder: 'inbox',
-			count: true
-		};
-
-		dsMessage.messages(params).success(function (res) {
-			var item = _.first(res.data) || {};
-			var count = item.values || {};
-			pollResult = count;
-			pollPromise = $timeout(checkUnreadMessages, POLL_INTERVAL);
-		});
-	}
+	TagService.listen(function (data) {
+		pollResult = data.mail || {};
+	});
 
 	/**
 	 * Get the followers of the given record.
@@ -142,7 +124,7 @@ ui.factory('MessageService', ['$q', '$timeout', 'DataSource', function($q, $time
 			});
 			// force unread check
 			if (flagState === 1 || flagState == -1) {
-				checkUnreadMessages();
+				TagService.find();
 			}
 		});
 
@@ -152,13 +134,10 @@ ui.factory('MessageService', ['$q', '$timeout', 'DataSource', function($q, $time
 	function removeMessage(message) {
 		var promise = dsMessage.remove(message);
 		promise.then(function () {
-			checkUnreadMessages(); // force unread check
+			TagService.find(); // force unread check
 		});
 		return promise;
 	}
-
-	// start polling
-	checkUnreadMessages();
 
 	return {
 		getFollowers: getFollowers,
@@ -166,7 +145,6 @@ ui.factory('MessageService', ['$q', '$timeout', 'DataSource', function($q, $time
 		getReplies: getReplies,
 		flagMessage: flagMessage,
 		removeMessage: removeMessage,
-		checkUnreadMessages: checkUnreadMessages,
 		unreadCount: function () {
 			return pollResult.unread;
 		}
@@ -194,6 +172,28 @@ ui.directive('uiMailMessage', function () {
 				scope.body = null;
 			}
 
+			function format(value) {
+				if (!value) {
+					return value;
+				}
+				if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) {
+					return moment(value).format("DD/MM/YYYY HH:mm");
+				}
+				if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+					return moment(value).format("DD/MM/YYYY");
+				}
+				return value;
+			}
+
+			if (body && body.tracks) {
+				_.each(body.tracks, function (item) {
+					item.displayValue = format(item.value);
+					if (item.oldValue !== undefined) {
+						item.displayValue += " &raquo; " + format(item.oldValue);
+					}
+				});
+			}
+
 			message.$title = (body||{}).title || message.subject;
 
 			scope.showFull = !message.summary;
@@ -212,6 +212,7 @@ ui.directive('uiMailMessage', function () {
 				"</a>" +
 				"<div class='mail-message'>" +
 					"<span class='arrow left'></span>" +
+					"<span class='star left' ng-show='message.$isNew || !message.$flags.isRead'><i class='fa fa-asterisk'></i></span>" +
 					"<div class='mail-message-icons'>" +
 						"<span ng-if='::message.$thread'>" +
 							"<i class='fa fa-reply' ng-show='::message.$thread' ng-click='onReply(message)'></i> " +
@@ -222,12 +223,12 @@ ui.directive('uiMailMessage', function () {
 							"</a>" +
 							"<ul class='dropdown-menu pull-right'>" +
 								"<li>" +
-									"<a href='javascript:' ng-show='::!message.$flags.isRead' ng-click='onFlag(message, 1)' x-translate>Mark as read</a>" +
-									"<a href='javascript:' ng-show='::message.$flags.isRead' ng-click='onFlag(message, -1)' x-translate>Mark as unread</a>" +
+									"<a href='javascript:' ng-show='!message.$flags.isRead' ng-click='onFlag(message, 1)' x-translate>Mark as read</a>" +
+									"<a href='javascript:' ng-show='message.$flags.isRead' ng-click='onFlag(message, -1)' x-translate>Mark as unread</a>" +
 								"</li>" +
 								"<li>" +
-									"<a href='javascript:' ng-show='::!message.$flags.isStarred' ng-click='onFlag(message, 2)' x-translate>Mark as important</a>" +
-									"<a href='javascript:' ng-show='::message.$flags.isStarred' ng-click='onFlag(message, -2)' x-translate>Mark as not important</a>" +
+									"<a href='javascript:' ng-show='!message.$flags.isStarred' ng-click='onFlag(message, 2)' x-translate>Mark as important</a>" +
+									"<a href='javascript:' ng-show='message.$flags.isStarred' ng-click='onFlag(message, -2)' x-translate>Mark as not important</a>" +
 								"</li>" +
 								"<li ng-if='message.$thread' ng-show='::!message.parent'>" +
 									"<a href='javascript:' ng-show='::!message.$flags.isArchived' ng-click='onFlag(message, 3)'>Move to archive</a>" +
@@ -244,7 +245,7 @@ ui.directive('uiMailMessage', function () {
 							"<a ng-if='message.relatedId && message.$name' href='#ds/form::{{::message.relatedModel}}/edit/{{::message.relatedId}}'>{{::message.$name}}</a>" +
 							"<span ng-if='::!message.relatedId && message.$name'>{{::message.$name}}</span>" +
 							"<span ng-if='::message.$name'> - </span>" +
-							"<span ng-if='::message.$title'>{{::message.$title}}</span>" +
+							"<span ng-if='::message.$title'>{{:: _t(message.$title) }}</span>" +
 						"</span>" +
 						"<span class='track-tags'>" +
 							"<span class='label' ng-class='::item.css' ng-repeat='item in ::body.tags'>{{:: _t(item.title) }}</span>" +
@@ -253,7 +254,7 @@ ui.directive('uiMailMessage', function () {
 					"<div class='mail-message-body'>" +
 						"<ul class='track-fields' ng-if='::body'>" +
 							"<li ng-repeat='item in ::body.tracks'>" +
-								"<strong>{{:: _t(item.title) }}</strong> : <span ng-bind-html='::item.value'></span>" +
+								"<strong>{{:: _t(item.title) }}</strong> : <span ng-bind-html='::item.displayValue'></span>" +
 							"</li>" +
 						"</ul>" +
 						"<div ng-if='!body'>" +
@@ -289,6 +290,7 @@ ui.formWidget('uiMailMessages', {
 			_.each(messages, function (message) {
 				if (!(message.$flags||{}).isRead) {
 					unread.push(message);
+					message.$isNew = true;
 				}
 				_.each(message.$children, function (item) {
 					if (!(item.$flags||{}).isRead) {
@@ -400,7 +402,7 @@ ui.formWidget('uiMailMessages', {
 						$scope.record.__empty = count === 0;
 						updateReadCount(found);
 					}
-				});
+				}, 100);
 
 				$scope.animation = {
 					'fade': true,
@@ -812,7 +814,7 @@ ui.formWidget('uiMailComposer', {
 	},
 	template: "" +
 		"<div class='mail-composer' ng-show='canShow()'>" +
-			"<textarea rows='1' ng-model='post' ui-textarea-auto-size class='span12' placeholder='Write your comment here'></textarea>" +
+			"<textarea rows='1' ng-model='post' ui-textarea-auto-size class='span12' placeholder='{{\"Write your comment here\" | t}}'></textarea>" +
 			"<div class='mail-composer-files' ng-show='files.length'>" +
 				"<div ui-mail-files x-files='files'></div>" +
 			"</div>" +

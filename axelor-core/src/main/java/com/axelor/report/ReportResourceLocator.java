@@ -23,6 +23,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.eclipse.birt.report.model.api.IResourceLocator;
 import org.eclipse.birt.report.model.api.ModuleHandle;
@@ -30,6 +31,7 @@ import org.eclipse.datatools.connectivity.oda.flatfile.ResourceLocator;
 
 import com.axelor.app.AppSettings;
 import com.axelor.common.ClassUtils;
+import com.axelor.common.FileUtils;
 
 /**
  * This is a {@link ResourceLocator} that first searches external reports
@@ -40,6 +42,8 @@ public class ReportResourceLocator implements IResourceLocator {
 
 	public static final String CONFIG_REPORT_DIR = "axelor.report.dir";
 	public static final String DEFAULT_REPORT_DIR = "{user.home}/axelor/reports";
+
+	private static final Pattern URL_PATTERN = Pattern.compile("^(file|jar|http|https|ftp):/.*");
 
 	private Path searchPath;
 
@@ -59,7 +63,6 @@ public class ReportResourceLocator implements IResourceLocator {
 	@Override
 	public URL findResource(ModuleHandle moduleHandle, String fileName, int type) {
 
-		Path path = searchPath;
 		String sub = ".";
 
 		switch (type) {
@@ -74,13 +77,25 @@ public class ReportResourceLocator implements IResourceLocator {
 			break;
 		}
 
-		path = path.resolve(sub).normalize();
+		// if already an url
+		if (URL_PATTERN.matcher(fileName).matches()) {
+			try {
+				return new URL(fileName);
+			} catch (MalformedURLException e) {
+			}
+		}
 
-		// first search in the external repository
-		File found = path.resolve(fileName).toFile();
+		// first resolve absolute path
+		File found = new File(fileName);
 
+		// next search in the top directory
 		if (!found.exists()) {
 			found = searchPath.resolve(fileName).toFile();
+		}
+
+		// else search in sub directory
+		if (!found.exists()) {
+			found = searchPath.resolve(sub).normalize().resolve(fileName).toFile();
 		}
 
 		if (found.exists()) {
@@ -91,9 +106,12 @@ public class ReportResourceLocator implements IResourceLocator {
 		}
 
 		// otherwise locate from the modules
-		path = Paths.get("reports", sub, fileName).normalize();
+		URL url = ClassUtils.getResource(FileUtils.getFile("reports", fileName).getPath().replace("\\", "/"));
+		if (url == null) {
+			url = ClassUtils.getResource(FileUtils.getFile("reports", sub, fileName).getPath().replace("\\", "/"));
+		}
 
-		return ClassUtils.getResource(path.toString());
+		return url;
 	}
 
 }
