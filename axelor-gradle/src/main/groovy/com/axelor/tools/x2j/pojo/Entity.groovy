@@ -219,6 +219,14 @@ class Entity {
 		constraints.addAll(other.constraints)
 		finders.addAll(other.finders)
 
+		if (other.track) {
+			if (track == null || other.track.replace) {
+				track = other.track.copyFor(this);
+			} else {
+				track.merge(other.track);
+			}
+		}
+
 		other.baseEntity = this
 		other.repository = this.repository
 
