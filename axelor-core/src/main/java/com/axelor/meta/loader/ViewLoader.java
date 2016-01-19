@@ -271,6 +271,7 @@ public class ViewLoader extends AbstractLoader {
 
 		if (entity == null) {
 			entity = new MetaSelect(selection.getName());
+			entity.setXmlId(xmlId);
 		}
 		
 		if (other == entity) {
@@ -466,6 +467,7 @@ public class ViewLoader extends AbstractLoader {
 
 		entity.setTitle(menuItem.getTitle());
 		entity.setIcon(menuItem.getIcon());
+		entity.setIconBackground(menuItem.getIconBackground());
 		entity.setModule(module.getName());
 		entity.setTag(menuItem.getTag());
 		entity.setTagGet(menuItem.getTagGet());

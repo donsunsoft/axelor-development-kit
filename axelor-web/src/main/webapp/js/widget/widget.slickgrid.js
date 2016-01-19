@@ -630,7 +630,7 @@ Grid.prototype.parse = function(view) {
 
 		cols.push(column);
 		
-		if (field.aggregate || ["integer", "long", "decimal"].indexOf(field.type) > -1) {
+		if (field.aggregate) {
 			column.groupTotalsFormatter = totalsFormatter;
 		}
 		
@@ -2069,6 +2069,9 @@ Grid.prototype.onButtonClick = function(event, args) {
 			if (handlerScope.field && handlerScope.field.target) {
 				context._parent = handlerScope.getContext();
 			}
+			if (context.id === 0) {
+				context.id = null;
+			}
 			return context;
 		};
 		field.handler.onClick().then(function(res){
@@ -2180,7 +2183,7 @@ Grid.prototype.groupBy = function(names) {
 	var aggregators = _.map(cols, function(col) {
 		var field = col.descriptor;
 		if (!field) return null;
-		if (field.aggregate === "sum" || ["integer", "long", "decimal"].indexOf(field.type) > -1) {
+		if (field.aggregate === "sum") {
 			return new Slick.Data.Aggregators.Sum(field.name);
 		}
 		if (field.aggregate === "avg") {
@@ -2301,6 +2304,9 @@ ui.directive('uiSlickEditors', function() {
 				var handler = $scope.handler || {};
 				if (context && handler.field && handler.field.target) {
 					context._parent = handler.getContext();
+				}
+				if (context.id === 0) {
+					context.id = null;
 				}
 				return context;
 			};

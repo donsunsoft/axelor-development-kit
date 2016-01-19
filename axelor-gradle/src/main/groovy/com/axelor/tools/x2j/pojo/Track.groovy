@@ -24,7 +24,15 @@ class Track {
 	private List<Annotation> fields = []
 	private List<Annotation> messages = []
 
+	private List<String> imports = []
+
 	private Entity entity
+
+	private boolean replace;
+
+	private Track(Entity entity) {
+		this.entity = entity;
+	}
 
 	Track(Entity entity, NodeChild node) {
 		this.entity = entity
@@ -35,6 +43,7 @@ class Track {
 
 		fields = fields.grep { it != null }
 		messages = messages.grep { it != null }
+		replace = node.'@replace' == "true"
 	}
 
 	private Annotation $field(NodeChild node) {
@@ -43,13 +52,15 @@ class Track {
 		String on = node.'@on'
 		String condition = node.'@if'
 
-		def annon = new Annotation(this.entity, "com.axelor.db.annotations.TrackField")
+		imports += ['com.axelor.db.annotations.TrackField']
+
+		def annon = new Annotation(this.entity, "TrackField")
 			.add("name", name)
 
 		if (condition) annon.add("condition", condition)
 		if (on) {
-			this.entity.importType("com.axelor.db.annotations.TrackEvent");
-			annon.add("on", "TrackEvent.${on}", false)
+			imports += ['com.axelor.db.annotations.TrackEvent']
+			annon.add("on", "com.axelor.db.annotations.TrackEvent.${on}", false)
 		}
 
 		return annon
@@ -63,14 +74,16 @@ class Track {
 		String condition = node.'@if'
 		String fields = node.'@fields'
 
-		def annon = new Annotation(this.entity, "com.axelor.db.annotations.TrackMessage")
+		imports += ['com.axelor.db.annotations.TrackMessage']
+
+		def annon = new Annotation(this.entity, "TrackMessage")
 			.add("message", message)
 			.add("condition", condition)
 
 		if (tag) annon.add("tag", tag)
 		if (on) {
-			this.entity.importType("com.axelor.db.annotations.TrackEvent");
-			annon.add("on", "TrackEvent.${on}", false)
+			imports += ['com.axelor.db.annotations.TrackEvent']
+			annon.add("on", "com.axelor.db.annotations.TrackEvent.${on}", false)
 		}
 
 		if (fields) {
@@ -83,8 +96,22 @@ class Track {
 
 	def $track() {
 		def annon = new Annotation(this.entity, "com.axelor.db.annotations.Track")
-		annon.add("fields", fields, false, false)
-		annon.add("messages", messages, false, false)
+		imports.each { name -> this.entity.importType(name) }
+		if (!fields.empty) annon.add("fields", fields, false, false)
+		if (!messages.empty) annon.add("messages", messages, false, false)
 		return annon
+	}
+
+	def merge(Track other) {
+		fields.addAll(other.fields);
+		messages.addAll(other.messages);
+		imports.addAll(other.imports);
+		return this;
+	}
+
+	def copyFor(Entity base) {
+		Track track = new Track(base);
+		track.merge(this);
+		return track;
 	}
 }

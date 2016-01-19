@@ -176,7 +176,7 @@ public class ActionGroup extends ActionResumable {
 		List<Object> result = Lists.newArrayList();
 		Iterator<ActionItem> iter = actions.iterator();
 
-		if (getName() != null) {
+		if (getName() != null && getName().indexOf("inboxMenuTag") == -1) {
 			log.debug("action-group: {}", getName());
 		}
 		
@@ -185,9 +185,11 @@ public class ActionGroup extends ActionResumable {
 			Element element = actions.get(i);
 			String name = element.getName().trim();
 
-			log.debug("action: {}", name);
+			if (name.indexOf("inboxMenuTag") == -1) {
+				log.debug("action: {}", name);
+			}
 
-			if ("save".equals(name) || "validate".equals(name) || "close".equals(name)) {
+			if ("save".equals(name) || "validate".equals(name) || "close".equals(name)  || "new".equals(name)) {
 				if (!element.test(handler)) {
 					log.debug("action '{}' doesn't meet the condition: {}", name, element.getCondition());
 					continue;
@@ -275,7 +277,8 @@ public class ActionGroup extends ActionResumable {
                 	last.containsKey("error") ||
                 	last.containsKey("save") ||
                 	last.containsKey("validate") ||
-                	last.containsKey("close")) {
+                	last.containsKey("close") ||
+                	last.containsKey("new")) {
             		String previous = (String) last.get("pending");
             		String pending = this.getPending(i, previous);
             		last.put("pending", pending);

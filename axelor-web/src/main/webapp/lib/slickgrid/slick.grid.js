@@ -311,13 +311,13 @@ if (typeof Slick === "undefined") {
             .bind("keydown", handleKeyDown);
         $canvas
             .bind("keydown", handleKeyDown)
-            .bind("taphold click", handleClick)
+            .bind("click", handleClick)
             .bind("dblclick", handleDblClick)
             .bind("contextmenu", handleContextMenu)
-            .bind("draginit", handleDragInit)
-            .bind("dragstart", {distance: 3}, handleDragStart)
-            .bind("drag", handleDrag)
-            .bind("dragend", handleDragEnd)
+            .bind("xdraginit", handleDragInit)
+            .bind("xdragstart", {distance: 3}, handleDragStart)
+            .bind("xdrag", handleDrag)
+            .bind("xdragend", handleDragEnd)
             .delegate(".slick-cell", "mouseenter", handleMouseEnter)
             .delegate(".slick-cell", "mouseleave", handleMouseLeave);
       }
@@ -715,7 +715,7 @@ if (typeof Slick === "undefined") {
         $col = $(e);
         $("<div class='slick-resizable-handle' />")
             .appendTo(e)
-            .bind("dragstart", function (e, dd) {
+            .bind("xdragstart", function (e, dd) {
               if (!getEditorLock().commitCurrentEdit()) {
                 return false;
               }
@@ -774,7 +774,7 @@ if (typeof Slick === "undefined") {
               maxPageX = pageX + Math.min(shrinkLeewayOnRight, stretchLeewayOnLeft);
               minPageX = pageX - Math.min(shrinkLeewayOnLeft, stretchLeewayOnRight);
             })
-            .bind("drag", function (e, dd) {
+            .bind("xdrag", function (e, dd) {
               var actualMinWidth, d = Math.min(maxPageX, Math.max(minPageX, e.pageX)) - pageX, x;
               if (d < 0) { // shrink column
                 x = d;
@@ -844,7 +844,7 @@ if (typeof Slick === "undefined") {
                 applyColumnWidths();
               }
             })
-            .bind("dragend", function (e, dd) {
+            .bind("xdragend", function (e, dd) {
               var newWidth;
               $(this).parent().removeClass("slick-header-column-active");
               for (j = 0; j < columnElements.length; j++) {
@@ -983,7 +983,7 @@ if (typeof Slick === "undefined") {
       $container.unbind(".slickgrid");
       removeCssRules();
 
-      $canvas.unbind("draginit dragstart dragend drag");
+      $canvas.unbind("xdraginit xdragstart xdragend xdrag");
       $container.empty().removeClass(uid);
     }
 
@@ -2235,15 +2235,11 @@ if (typeof Slick === "undefined") {
       if (!cell || (currentEditor !== null && activeRow == cell.row && activeCell == cell.cell)) {
 	    return;
       }
-      if (e.type === "taphold") {
-    	trigger(self.onTapHold, {row: cell.row, cell: cell.cell}, e);
-      } else {
-    	// XXX: hack to deffer click event
-	    var wait = trigger(self.onClick, {row: cell.row, cell: cell.cell}, e);
-	    if (wait > 0) {
-		  return defer(handleClick, wait, e, cell);
-	    };
-      }
+      // XXX: hack to deffer click event
+      var wait = trigger(self.onClick, {row: cell.row, cell: cell.cell}, e);
+      if (wait > 0) {
+	    return defer(handleClick, wait, e, cell);
+      };
 
       if (e.isImmediatePropagationStopped()) {
         return;
@@ -3220,7 +3216,6 @@ if (typeof Slick === "undefined") {
       "onMouseLeave": new Slick.Event(),
       "onClick": new Slick.Event(),
       "onDblClick": new Slick.Event(),
-      "onTapHold": new Slick.Event(),
       "onContextMenu": new Slick.Event(),
       "onKeyDown": new Slick.Event(),
       "onAddNewRow": new Slick.Event(),
