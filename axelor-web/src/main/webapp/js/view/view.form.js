@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -291,6 +291,8 @@ function FormViewCtrl($scope, $element) {
 		var context = _.extend({}, $scope._routeSearch, $scope.record);
 		if ($scope.$parent && $scope.$parent.getContext) {
 			context._parent = $scope.$parent.getContext();
+		} else {
+			context = _.extend({}, $scope._viewParams.context, context);
 		}
 
 		function compact(item) {
@@ -321,6 +323,10 @@ function FormViewCtrl($scope, $element) {
 
 		context = _.extend(context, dummy);
 		context._model = ds._model;
+
+		if (context.id <= 0) {
+			context.id = null;
+		}
 
 		if (!$scope.$hasPanels) {
 			context._form = true;
@@ -570,7 +576,9 @@ function FormViewCtrl($scope, $element) {
 			routeId = null;
 			$scope.edit(record);
 			$scope.setEditable();
-			record._dirty = true;
+			$scope.$timeout(function () {
+				record._dirty = true;
+			});
 		});
 	};
 	
@@ -1045,7 +1053,7 @@ ui.formBuild = function (scope, schema, fields) {
 			var _attrs = _.extend({}, attrs.attrs, this.attrs, widgetAttrs, {
 					'name'			: attrs.name || this.name,
 					'x-cols'		: this.cols,
-					'x-colspan'		: this.colSpan,
+					'x-colspan'		: this.colSpan || (type === 'help' ? 12 : undefined),
 					'x-coloffset'	: this.colOffset,
 					'x-rowspan'		: this.rowSpan,
 					'x-sidebar'		: this.sidebar,

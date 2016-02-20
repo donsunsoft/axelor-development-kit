@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -68,6 +68,7 @@ public class AppInfo {
 		map.put("user.lang", user.getLanguage());
 		map.put("user.action", user.getHomeAction());
 		map.put("user.singleTab", user.getSingleTab());
+		map.put("user.noHelp", user.getNoHelp() == Boolean.TRUE);
 
 		if (user.getImage() != null) {
 			map.put("user.image", getLink(user, null));

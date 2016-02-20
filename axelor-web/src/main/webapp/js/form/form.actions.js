@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -29,8 +29,9 @@ var equals = angular.equals,
 
 function updateValues(source, target, itemScope, formScope) {
 
-	if (equals(source, target) && (!source || !source.$force))
+	if (equals(source, target) && (!source || !source.$force)) {
 		return;
+	}
 
 	function compact(value) {
 		if (!value) return value;
@@ -41,15 +42,18 @@ function updateValues(source, target, itemScope, formScope) {
 		return res;
 	}
 
+	var changed = false;
+
 	forEach(source, function(value, key) {
-		if (isDate(value)) {
-			target[key] = value;
+		var dest;
+		var newValue = value;
+		var oldValue = target[key];
+		if (oldValue === newValue) {
 			return;
 		}
-		var dest;
 		if (isArray(value)) {
 			dest = target[key] || [];
-			value = _.map(value, function(item){
+			newValue = _.map(value, function(item) {
 				var found = _.find(dest, function(v){
 					return item.id && v.id === item.id;
 				});
@@ -60,10 +64,7 @@ function updateValues(source, target, itemScope, formScope) {
 				}
 				return item;
 			});
-			target[key] = value;
-			return;
-		}
-		if (isObject(value)) {
+		} else if (isObject(value) && !isDate(value)) {
 			dest = target[key] || {};
 			if (dest.id === value.id) {
 				if (_.isNumber(dest.version)) {
@@ -78,13 +79,16 @@ function updateValues(source, target, itemScope, formScope) {
 			} else {
 				dest = compact(value);
 			}
-			target[key] = dest;
-		} else {
-			target[key] = value;
+			newValue = dest;
+		}
+
+		if (!equals(oldValue, newValue)) {
+			changed = true;
+			target[key] = newValue;
 		}
 	});
 
-	if (target) {
+	if (target && changed) {
 		target.$dirty = true;
 	}
 }
@@ -994,6 +998,16 @@ ActionHandler.prototype = {
 					var url = view.name || view.resource;
 					var fileName = tab.params.fileName || "true";
 					ui.download(url, fileName);
+					return scope.applyLater();
+				}
+			}
+			if (tab.viewType === "html" && (tab.params||{}).target === "_blank") {
+				var view = _.findWhere(tab.views, { type: "html" });
+				if (view) {
+					var url = view.name || view.resource;
+					setTimeout(function () {
+						window.open(url);
+					});
 					return scope.applyLater();
 				}
 			}

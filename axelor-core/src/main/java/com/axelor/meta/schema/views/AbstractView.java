@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -89,6 +89,9 @@ public abstract class AbstractView {
 
 	@XmlAttribute
 	private String groups;
+
+	@XmlAttribute
+	private String helpLink;
 
 	@JsonIgnore
 	@XmlAttribute( name = "width")
@@ -187,6 +190,14 @@ public abstract class AbstractView {
 
 	public void setGroups(String groups) {
 		this.groups = groups;
+	}
+
+	public String getHelpLink() {
+		return helpLink;
+	}
+
+	public void setHelpLink(String helpLink) {
+		this.helpLink = helpLink;
 	}
 
 	private String widthPart(int which) {

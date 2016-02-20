@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -236,18 +236,16 @@ public class XMLViews {
 
 		if (name != null) {
 
-			// first find personalized view
+			// find personalized view
 			if (user != null) {
 				custom = customViews.findByUser(name, model, user);
 				custom = custom == null ? customViews.findByUser(name, user) : custom;
 			}
 
-			// else find default view
-			if (custom == null) {
-				view = views.findByName(name, model, group);
-				view = view == null ? views.findByName(name, model) : view;
-				view = view == null ? views.findByName(name) : view;
-			}
+			// find default view
+			view = views.findByName(name, model, group);
+			view = view == null ? views.findByName(name, model) : view;
+			view = view == null ? views.findByName(name) : view;
 		}
 
 		if (view == null) {
@@ -261,6 +259,9 @@ public class XMLViews {
 			final String xml = custom == null ? view.getXml() : custom.getXml();
 			xmlView = ((ObjectViews) XMLViews.unmarshal(xml)).getViews().get(0);
 			xmlView.setViewId(view.getId());
+			if (view.getHelpLink() != null) {
+				xmlView.setHelpLink(view.getHelpLink());
+			}
 		} catch (Exception e) {
 			return null;
 		}
@@ -292,6 +293,9 @@ public class XMLViews {
 		try {
 			xmlView = ((ObjectViews) XMLViews.unmarshal(view.getXml())).getViews().get(0);
 			xmlView.setViewId(view.getId());
+			if (view.getHelpLink() != null) {
+				xmlView.setHelpLink(view.getHelpLink());
+			}
 		} catch (Exception e) {
 			return null;
 		}

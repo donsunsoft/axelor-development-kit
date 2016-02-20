@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -46,9 +46,6 @@ public class FormView extends AbstractView {
 	private String onNew;
 
 	@XmlAttribute
-	private String helpLink;
-
-	@XmlAttribute
 	private String readonlyIf;
 	
 	@XmlAttribute
@@ -79,6 +76,7 @@ public class FormView extends AbstractView {
         @XmlElement(name = "spacer", type = Spacer.class),
         @XmlElement(name = "separator", type = Separator.class),
         @XmlElement(name = "label", type = Label.class),
+        @XmlElement(name = "help", type = Help.class),
         @XmlElement(name = "button", type = Button.class),
         @XmlElement(name = "panel", type = Panel.class),
         @XmlElement(name = "panel-include", type = PanelInclude.class),
@@ -128,14 +126,6 @@ public class FormView extends AbstractView {
 
 	public void setOnNew(String onNew) {
 		this.onNew = onNew;
-	}
-
-	public String getHelpLink() {
-		return helpLink;
-	}
-
-	public void setHelpLink(String helpLink) {
-		this.helpLink = helpLink;
 	}
 
 	public String getReadonlyIf() {

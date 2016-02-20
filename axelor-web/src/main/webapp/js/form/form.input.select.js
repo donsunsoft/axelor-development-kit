@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -701,6 +701,61 @@ ui.formInput('RadioSelect', {
 			'<input type="radio" name="radio_{{$parent.$id}}" value="{{select.value}}"'+
 			' ng-disabled="isReadonly()"'+
 			' ng-checked="getValue() == select.value">'+
+			'<span class="box"></span>'+
+			'<span class="title">{{select.title}}</span>'+
+		'</label>'+
+		'</li>'+
+	'</ul>'
+});
+
+ui.formInput('CheckboxSelect', {
+
+	css: "checkbox-select",
+
+	link: function(scope, element, attrs, model) {
+
+		var field = scope.field;
+		var selection = field.selectionList || [];
+
+		scope.getSelection = function () {
+			return filterSelection(scope, field, selection, scope.getValue());
+		};
+
+		scope.isSelected = function (select) {
+			var value = scope.getValue();
+			var current = ("" + value).split(",").map(function (val) {
+				return parseNumber(scope.field, val);
+			});
+			return current.indexOf(select.value) > -1;
+		};
+
+		element.on("change", ":input", function(e) {
+			var all = element.find("input:checked");
+			var selected = [];
+			all.each(function () {
+				var val = parseNumber(scope.field, $(this).val());
+				selected.push(val);
+			});
+			var value =  selected.length === 0 ? null : selected.join(",");
+			scope.setValue(value, true);
+			scope.$apply();
+		});
+
+		if (field.direction === "vertical" || field.dir === "vert") {
+			setTimeout(function(){
+				element.addClass("checkbox-select-vertical");
+			});
+		}
+	},
+	template_editable: null,
+	template_readonly: null,
+	template:
+	'<ul ng-class="{ readonly: isReadonly() }">'+
+		'<li ng-repeat="select in getSelection()">'+
+		'<label class="ibox">'+
+			'<input type="checkbox" value="{{select.value}}"'+
+			' ng-disabled="isReadonly()"'+
+			' ng-checked="isSelected(select)">'+
 			'<span class="box"></span>'+
 			'<span class="title">{{select.title}}</span>'+
 		'</label>'+

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -281,6 +281,9 @@ function RefFieldCtrl($scope, $element, DataSource, ViewService, initCallback) {
 			var sortBy = view.sortBy || view.orderBy;
 			if (sortBy) {
 				sortBy = sortBy.split(",");
+			}
+			if (view.canMove && fields.indexOf('sequence') === -1) {
+				fields.push('sequence');
 			}
 			return fetchDS().search({
 				filter: filter,
