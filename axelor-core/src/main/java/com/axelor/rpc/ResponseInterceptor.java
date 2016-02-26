@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.axelor.auth.AuthSecurityException;
+import com.axelor.auth.AuthUtils;
 import com.axelor.db.JpaSecurity.AccessType;
 import com.axelor.db.JpaSupport;
 import com.axelor.db.Model;
@@ -61,7 +62,7 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 		try {
 			response = (Response) invocation.proceed();
 		} catch (Exception e) {
-			EntityTransaction txn = getEntityManager().getTransaction();
+			final EntityTransaction txn = getEntityManager().getTransaction();
 			if (txn.isActive()) {
 				txn.rollback();
 			} else if (e instanceof PersistenceException) {
@@ -70,8 +71,17 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 					txn.begin();
 				} catch(Exception ex){}
 			}
-			response = new Response();
-			response = onException(e, response);
+			try {
+				response = new Response();
+				response = onException(e, response);
+				if (log.isTraceEnabled()) {
+					log.trace("Exception: {}", e.getMessage(), e);
+				}
+			} finally {
+				if (txn.isActive()) {
+					txn.rollback();
+				}
+			}
 		} finally {
 			running.remove();
 		}
@@ -79,7 +89,6 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 	}
 
 	private Response onException(Throwable ex, Response response) {
-
 		if (ex instanceof AuthorizationException) {
 			return onAuthorizationException((AuthorizationException) ex, response);
 		}
@@ -99,6 +108,7 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 			return onException(ex.getCause(), response);
 		}
 		response.setException(ex);
+		log.error("Error: {}", ex.getMessage());
 		return response;
 	}
 
@@ -109,9 +119,11 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 
 		report.put("title", title);
 		report.put("message", message);
-		response.setData(report);
 
+		response.setData(report);
 		response.setStatus(Response.STATUS_FAILURE);
+
+		log.error("Authorization Error: {}", e.getMessage());
 		return response;
 	}
 
@@ -139,6 +151,8 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 
 		response.setData(report);
 		response.setStatus(Response.STATUS_FAILURE);
+
+		log.error("Concurrency Error: {}", e.getMessage());
 		return response;
 	}
 
@@ -156,6 +170,7 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 		response.setData(report);
 		response.setStatus(Response.STATUS_FAILURE);
 
+		log.error("Constraint Error: {}", e.getMessage());
 		return response;
 	}
 
@@ -174,22 +189,27 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 		PSQLException pe = (PSQLException) e;
 
 		String title = null;
-		String message = null;
+		String message = pe.getServerErrorMessage().getMessage();
 
 		// http://www.postgresql.org/docs/9.3/static/errcodes-appendix.html
 		switch (state) {
 		case "23503":   // foreign key violation
 			title = I18n.get("Foreign key violation");
+			message = I18n.get("The record(s) can't be updated or deleted as it violates foreign key constraint.");
 			break;
 		case "23505":	// unique constraint violation
 			title = I18n.get("Unique constraint violation");
+			message = I18n.get("The record(s) can't be updated as it violates unique constraint.");
 			break;
 		default:
 			title = I18n.get("SQL error");
+			message = I18n.get("Unexpected database error occurred on the server.");
 			break;
 		}
 
-		message = pe.getServerErrorMessage().getDetail();
+		if (AuthUtils.isAdmin(AuthUtils.getUser()) || AuthUtils.isTechnicalStaff(AuthUtils.getUser())) {
+			message += "<p>" + pe.getMessage() + "</p>";
+		}
 
 		Map<String, Object> report = new HashMap<>();
 		report.put("title", title);
@@ -198,6 +218,7 @@ public class ResponseInterceptor extends JpaSupport implements MethodInterceptor
 		response.setData(report);
 		response.setStatus(Response.STATUS_FAILURE);
 
+		log.error("SQL Error: {}", e.getMessage());
 		return response;
 	}
 }

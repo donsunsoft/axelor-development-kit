@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -81,6 +81,10 @@ public class AuthUtils {
 	public static boolean isAdmin(final User user) {
 		return "admin".equals(user.getCode())
 				|| (user.getGroup() != null && "admins".equals(user.getGroup().getCode()));
+	}
+
+	public static boolean isTechnicalStaff(final User user) {
+		return user.getGroup() != null && user.getGroup().getTechnicalStaff() == Boolean.TRUE;
 	}
 
 	private static final String QS_HAS_ROLE = "SELECT self.id FROM Role self WHERE "

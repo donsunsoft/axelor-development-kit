@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -123,7 +123,11 @@ ui.directive('uiDialog', function() {
 				if (target) {
 					return setTimeout(function(){
 						if (!axelor.device.mobile) {
-							target.find(':input:first').focus().select();
+							var input = target.find(':input:first');
+							input.addClass('x-focus').focus().select();
+							setTimeout(function () {
+								input.removeClass('x-focus');
+							});
 						}
 					});
 				}

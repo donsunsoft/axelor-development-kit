@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -239,7 +239,7 @@ ui.formInput('ManyToOne', 'Select', {
 
 	controller: ManyToOneCtrl,
 
-	showSelectionOn: null,
+	showSelectionOn: "focus",
 
 	init: function(scope) {
 		this._super(scope);
@@ -318,6 +318,22 @@ ui.formInput('ManyToOne', 'Select', {
 			});
 		}
 
+		if (!field.placeholder) {
+			input.on("change", function () {
+				input.attr('placeholder', input.is(':focus') ? _t('Search...') : null);
+			});
+			input.on("focus", function () {
+				input.attr('placeholder', _t('Search...'));
+			});
+			input.on("blur", function () {
+				input.attr('placeholder', '');
+			});
+		}
+
+		input.on("click", function () {
+			scope.showSelection();
+		});
+
 		scope.loadSelection = function(request, response) {
 
 			if (!scope.canSelect()) {
@@ -327,9 +343,9 @@ ui.formInput('ManyToOne', 'Select', {
 			this.fetchSelection(request, function(items, page) {
 				var term = request.term;
 				
-				if (scope.canSelect() && items.length < page.total) {
+				if (scope.canSelect() && (items.length < page.total || (request.term && items.length === 0))) {
 					items.push({
-						label: _t("Search..."),
+						label: _t("Search more..."),
 						click: function() { scope.showSelector(); }
 					});
 				}
@@ -590,7 +606,7 @@ ui.formInput('InlineManyToOne', 'ManyToOne', {
 
 ui.formInput('SuggestBox', 'ManyToOne', {
 
-	showSelectionOn: "click",
+	showSelectionOn: "focus",
 
 	link_editable: function(scope, element, attrs, model) {
 		this._super.apply(this, arguments);
@@ -605,8 +621,8 @@ ui.formInput('SuggestBox', 'ManyToOne', {
 	template_editable:
 	'<span class="picker-input">'+
 		'<input type="text" autocomplete="off" ui-can-suggest>'+
-		'<span class="picker-icons">'+
-			'<i class="fa fa-times" ng-show="text" ng-click="handleClear()"></i>'+
+		'<span class="picker-icons picker-icons-2">'+
+			'<i class="fa fa-pencil" ng-click="onEdit()" ng-show="hasPermission(\'read\') && canView() && canEdit()" title="{{\'Edit\' | t}}"></i>'+
 			'<i class="fa fa-caret-down" ng-click="showSelection()"></i>'+
 		'</span>'+
    '</span>'

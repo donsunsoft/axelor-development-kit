@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -140,6 +140,22 @@ ui.directive('uiNavSubTree', ['$compile', function ($compile) {
 					} else {
 						icon.addClass("bg-" + menu.iconBackground);
 					}
+
+					// get computed color value
+					var color = icon.css('background-color');
+					var bright = d3.rgb(color).brighter(.3).toString();
+
+					// use same color for vertical line
+					element.css("border-left-color", color);
+
+					// add hover effect
+					element.hover(function () {
+						icon.css('background-color', bright);
+						element.css("border-left-color", bright);
+					}, function () {
+						icon.css('background-color', color)
+						element.css("border-left-color", color);
+					});
 				}
 			});
 
@@ -218,10 +234,10 @@ ui.directive('uiNavSubTree', ['$compile', function ($compile) {
 		},
 		replace: true,
 		template:
-			"<li ng-class='{folder: menu.children, tagged: menu.tag }'>" +
+			"<li ng-class='{folder: menu.children, tagged: menu.tag }' data-name='{{menu.name}}'>" +
 				"<a href='#'>" +
 					"<img class='nav-image' ng-if='menu.icon' ng-src='{{menu.icon}}'></img>" +
-					"<span class='nav-icon' ng-if='menu.fa'><i class='nav-icon fa' ng-class='menu.fa'></i></span>" +
+					"<span class='nav-icon' ng-if='menu.fa'><i class='fa' ng-class='menu.fa'></i></span>" +
 					"<span class='nav-title'>{{menu.title}}</span>" +
 					"<span ng-show='menu.tag' ng-class='menu.tagCss' class='nav-tag label'>{{menu.tag}}</span>" +
 				"</a>" +

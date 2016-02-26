@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -98,6 +98,20 @@ function makePopover(scope, element, callback, placement) {
 	element.on('mouseenter.popover', enter);
 	element.on('mouseleave.popover', leave);
 
+	function selectText(elem) {
+		var el = $(elem).get(0);
+        if (document.selection) {
+            var range = document.body.createTextRange();
+            range.moveToElementText(el);
+            range.select();
+        } else if (window.getSelection) {
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+        }
+    }
+
 	function enter(e) {
 		if (popoverTimer) {
 			clearTimeout(popoverTimer);
@@ -106,13 +120,16 @@ function makePopover(scope, element, callback, placement) {
 			if (popoverElem === null) {
 				popoverElem = element;
 				popoverElem.popover('show');
+				if (e.ctrlKey) {
+					selectText(table.find('.field-name,.model-name').get(0));
+				}
 			}
 			var tip = element.data('popover').$tip;
 			if (tip) {
 				tip.attr('tabIndex', 0);
 				tip.css('outline', 'none');
 			}
-		}, 1000);
+		}, e.ctrlKey ? 0 : 1000);
 	}
 	
 	function leave(e) {
@@ -167,7 +184,7 @@ ui.directive('uiTabPopover', function() {
 			addRow(_t('Action'), tab.action);
 		}
 		if (tab.model) {
-			addRow(_t('Object'), tab.model);
+			addRow(_t('Object'), '<code>' + tab.model + '</code>', 'model-name');
 		}
 		if (tab.domain) {
 			addRow(_t('Domain'), tab.domain);
@@ -209,7 +226,7 @@ ui.directive('uiHelpPopover', function() {
 		}
 
 		addRow(_t('Object'), model);
-		addRow(_t('Field Name'), field.name);
+		addRow(_t('Field Name'), '<code>' + field.name + '</code>', 'field-name');
 		addRow(_t('Field Type'), field.serverType);
 
 		if (field.type === 'text') {
@@ -298,9 +315,12 @@ ui.formItem('Label', {
 		if (field && field.required) {
 			element.addClass('required');
 		}
+		if (field && field.help && axelor.config['user.noHelp'] !== true) {
+			element.addClass('has-help');
+		}
 	},
 
-	template: '<label><sup ng-if="field.help">?</sup><span ui-help-popover ng-transclude></span></label>'
+	template: '<label><span ui-help-popover ng-transclude></span></label>'
 });
 
 /**
@@ -328,8 +348,38 @@ ui.formItem('Separator', {
  */
 ui.formItem('Static', {
 	css: 'static-item',
+	link: function (scope, element, attrs, ctrl) {
+		var field = scope.field;
+		element.html(field.text);
+	},
+	template: '<div></div>'
+});
+
+/**
+ * The Static Label widget.
+ *
+ */
+ui.formItem('StaticLabel', {
+	css: 'static-item',
 	transclude: true,
 	template: '<label ng-transclude></label>'
+});
+
+/**
+ * The Help Text widget.
+ *
+ */
+ui.formItem('Help', {
+	css: 'help-item',
+	link: function (scope, element, attrs, ctrl) {
+		var field = scope.field;
+		var css = "alert alert-info";
+		if (field.css && field.css.indexOf('alert-') > -1) {
+			css = "alert";
+		}
+		element.addClass(css).html(field.text);
+	},
+	template: '<div></div>'
 });
 
 /**

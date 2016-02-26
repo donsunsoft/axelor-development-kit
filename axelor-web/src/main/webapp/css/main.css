@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -297,7 +297,7 @@ header .navbar .nav-link-user-sub {
 }
 
 .ui-autocomplete {
-	max-height: 200px;
+	max-height: 340px;
 	overflow-y: auto;
 	overflow-x: hidden;
 }
@@ -439,6 +439,13 @@ header .navbar .nav-link-user-sub {
 .view-pane > .view-container > div:not(.slick-editor-dropdown) {
 	position: absolute;
 	top: 0px; left: 0px; right: 0px; bottom: 0px;
+}
+
+.view-pane > .view-container.has-toolbar {
+	top: -6px;
+}
+.view-tabs-single .view-pane > .view-container.has-toolbar {
+	top: 0;
 }
 
 .grid-view > .slickgrid {
@@ -613,7 +620,7 @@ header .navbar .nav-link-user-sub {
 
 .html-view > .iframe-container {
 	position: absolute;
-	top: 4px; bottom: 4px; left: 4px; right: 4px;	
+	top: 0; bottom: 0; left: 0; right: 0;
 }
 
 .iframe-container > iframe {
@@ -811,9 +818,10 @@ img.prefix-icon {
 }
 
 .view-tabs-single .navigation-tabs > .nav-tabs > li > i {
+    width: 28px;
     float: right;
     font-size: 14px;
     line-height: 32px;
-    margin-right: 16px;
+    text-align: center;
     cursor: pointer;
 }

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -148,6 +148,9 @@
 	padding: 14px;
 }
 
+.dashboard.attached {
+	margin-top: -9px;
+}
 
 .dashboard,
 .dashboard .dashlet {
@@ -170,6 +173,7 @@
 .dashboard .dashlet-header {
 	border-top: 4px solid #e7e7e7;
 	padding: 11px 15px 14px;
+	margin-top: -1px;
 	overflow: hidden;
 	cursor: move;
 }

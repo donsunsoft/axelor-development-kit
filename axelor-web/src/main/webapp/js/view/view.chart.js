@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -39,7 +39,7 @@ function ChartCtrl($scope, $element, $http) {
 
 	function refresh() {
 
-		if (viewChart && searchScope && !searchScope.isValid()) {
+		if (viewChart && searchScope && $scope.searchFields && !searchScope.isValid()) {
 			return;
 		}
 
@@ -68,6 +68,7 @@ function ChartCtrl($scope, $element, $http) {
 		return $http.post('ws/meta/chart/' + view.name, params).then(function(response) {
 			var res = response.data;
 			var data = res.data;
+			var isInitial = viewChart === null;
 
 			if (viewChart === null) {
 				viewChart = data;
@@ -80,7 +81,12 @@ function ChartCtrl($scope, $element, $http) {
 				$scope.searchInit = data.onInit;
 			} else {
 				$scope.render(data);
+				if (isInitial) {
+					refresh(); // force loading data
+				}
 			}
+			loading = false;
+		}, function () {
 			loading = false;
 		});
 	}
@@ -227,6 +233,16 @@ function applyXY(chart, data) {
 	return chart.x(function (d) { return d.x; });
 }
 
+function colors(color) {
+	var all = d3.scale.category20b().range();
+	if (color) {
+		all = _.flatten(color.split(',').map(function (c) {
+			return _.range(0, 5).map(d3.scale.linear().domain([0, 5]).range([c, 'white']))
+		}).concat(all));
+	}
+	return all;
+}
+
 var CHARTS = {};
 
 function PlusData(series, data) {
@@ -292,7 +308,7 @@ function PieChart(scope, element, data) {
 		.showLabels(false)
 		.x(function(d) { return d.x; })
 		.y(function(d) { return d.y; })
-	    .color(d3.scale.category10().range());
+	    .color(colors(config.colors));
 
 	if (series.type === "donut") {
 		chart.donut(true)
@@ -593,6 +609,10 @@ function Chart(scope, element, data) {
 			return;
 		}
 
+		if (chart.color) {
+			chart.color(colors(config.colors));
+		}
+
 		if (chart.noData) {
 			chart.noData(noData);
 		}
@@ -662,12 +682,13 @@ function Chart(scope, element, data) {
 		
 		function adjust() {
 			
-			if (element.is(":hidden")) {
+			if (!element[0] || element.parent().is(":hidden")) {
 				return;
 			}
 
-			var w = element.width(),
-				h = element.height();
+			var rect = element[0].getBoundingClientRect();
+			var w = rect.width,
+				h = rect.height;
 			
 			if (w === lastWidth && h === lastHeight) {
 				return;
@@ -691,30 +712,20 @@ var directiveFn = function(){
 		controller: ChartCtrl,
 		link: function(scope, element, attrs) {
 			
-			var initialized = false;
 			var svg = element.children('svg');
 			var form = element.children('.chart-controls');
 			
 			scope.render = function(data) {
-				if (svg.is(":hidden")) {
-					initialized = false;
+				if (element.is(":hidden")) {
 					return;
 				}
 				setTimeout(function () {
 					svg.height(element.height() - form.height()).width('100%');
 					scope.title = data.title;
 					Chart(scope, svg, data);
-					initialized = true;
 					return;
 				});
 			};
-
-			element.on("adjustSize", _.debounce(function(e){
-				if (!initialized) {
-					scope.onRefresh();
-					scope.applyLater();
-				}
-			}));
 
 			function onNewOrEdit() {
 				if (scope.searchInit && scope.searchFields) {

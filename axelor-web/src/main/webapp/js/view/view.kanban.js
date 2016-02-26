@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -51,6 +51,7 @@ function BaseCardsCtrl(type, $scope, $element) {
 
 		viewPromise.then(function (meta) {
 			$scope.parse(meta.fields, meta.view);
+			$scope.$broadcast("on:clear-filter-silent");
 		});
 	};
 
@@ -67,7 +68,7 @@ function BaseCardsCtrl(type, $scope, $element) {
 	};
 
 	$scope.onRefresh = function () {
-		return $scope._dataSource.search().success(update);
+		return $scope.filter({});
 	};
 
 	function update(records) {
@@ -127,6 +128,16 @@ ui.controller("CardsCtrl", ['$scope', '$element', function CardsCtrl($scope, $el
 		});
 		$scope.viewItems = viewItems;
 		$scope.onRefresh();
+		$scope.waitForActions(axelor.$adjustSize);
+	};
+
+	$scope.onExport = function (full) {
+		var fields = full ? [] : _.pluck($scope.viewItems, 'name');
+		return $scope._dataSource.export_(fields).success(function(res) {
+			var fileName = res.fileName;
+			var filePath = 'ws/rest/' + $scope._model + '/export/' + fileName;
+			ui.download(filePath, fileName);
+		});
 	};
 }]);
 
@@ -438,34 +449,11 @@ ui.directive('uiCard', ["$parse", "$compile", function ($parse, $compile) {
 			}, true);
 
 			evalScope.$image = function (fieldName, imageName) {
-				var rec = scope.record;
-				var v = rec.version || rec.$version || 0;
-				if (fieldName === null && imageName) {
-					return "ws/rest/" + scope._model + "/" + rec.id + "/" + imageName + "/download?image=true&v=" + v;
-				}
-				var field = scope.fields[fieldName];
-				if (field && field.target && rec[fieldName]) {
-					var val = rec[fieldName];
-					return "ws/rest/" + field.target + "/" + val.id + "/" + imageName + "/download?image=true&v=" + v;
-				}
-				return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+				return ui.formatters.$image(scope, fieldName, imageName);
 			};
 
 			evalScope.$fmt = function (fieldName) {
-				var value = evalScope[fieldName];
-				if (value === undefined || value === null) {
-					return "";
-				}
-				var field = scope.viewItems[fieldName] || scope.fields[fieldName];
-				if (!field) {
-					return value;
-				}
-				var type = field.selection ? "selection" : field.type;
-				var formatter = ui.formatters[type];
-				if (formatter) {
-					return formatter(field, value);
-				}
-				return value;
+				return ui.formatters.$fmt(scope, fieldName, evalScope[fieldName]);
 			};
 
 			var template = (scope.schema.template || "<span></span>").trim();

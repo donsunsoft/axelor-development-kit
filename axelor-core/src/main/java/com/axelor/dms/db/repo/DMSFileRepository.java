@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -338,21 +338,24 @@ public class DMSFileRepository extends JpaRepository<DMSFile> {
 		json.put("updatedBy", file.getUpdatedBy());
 		json.put("updatedOn", file.getUpdatedOn());
 
-		if (metaFile != null) {
-			json.put("fileType", metaFile.getFileType());
-		}
-
 		if ("html".equals(file.getContentType())) {
 			json.put("fileType", "text/html");
 			json.put("contentType", "html");
-			json.put("typeIcon", "fa fa-file-text");
+			json.put("typeIcon", "fa fa-file-text-o");
 			json.remove("downloadIcon");
 		}
 		if ("spreadsheet".equals(file.getContentType())) {
 			json.put("fileType", "text/json");
 			json.put("contentType", "spreadsheet");
-			json.put("typeIcon", "fa fa-table");
+			json.put("typeIcon", "fa fa-file-excel-o");
 			json.remove("downloadIcon");
+		}
+
+		if (metaFile != null) {
+			String fileType = metaFile.getFileType();
+			String fileIcon = metaFiles.fileTypeIcon(metaFile);
+			json.put("fileType", fileType);
+			json.put("typeIcon", "fa fa-colored " + fileIcon);
 		}
 
 		if (file.getTags() != null) {

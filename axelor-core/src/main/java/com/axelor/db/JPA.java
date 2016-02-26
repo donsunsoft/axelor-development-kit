@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -328,6 +328,7 @@ public final class JPA {
 		}
 		
 		if (id == null || id <= 0) {
+			id = null;
 			try {
 				bean = klass.newInstance();
 			} catch (Exception ex) {
@@ -588,7 +589,7 @@ public final class JPA {
 		final int random = new Random().nextInt();
 		for(final Property p : mapper.getProperties()) {
 			
-			if (p.isVirtual() || p.isPrimary() || p.isVersion() || p.isSequence()) {
+			if (p.isVirtual() || p.isPrimary() || p.isVersion() || p.isSequence() || !p.isCopyable()) {
 				continue;
 			}
 

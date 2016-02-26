@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -736,21 +736,22 @@ ui.formInput('TagSelect', 'ManyToMany', 'MultiSelect', {
 				return response([]);
 			}
 
-			this.fetchSelection(request, function(items) {
+			this.fetchSelection(request, function(items, page) {
 				var term = request.term;
+				var canSelect = scope.canSelect() && (items.length < page.total || (request.term && items.length === 0));
 				if (field.create && term && scope.canNew()) {
 					items.push({
-						label : _t('Create "{0}" and add...', term),
+						label : _t('Create "{0}" and select...', '<strong><em>' + term + '</em></strong>'),
 						click : function() { create(term); }
 					});
 					items.push({
-						label : _t('Create "{0}"...', term),
+						label : _t('Create "{0}"...', '<strong><em>' + term + '</em></strong>'),
 						click : function() { create(term, true); }
 					});
 				}
-				if (scope.canSelect()) {
+				if (canSelect) {
 					items.push({
-						label : _t("Search..."),
+						label : _t("Search more..."),
 						click : function() { scope.showSelector(); }
 					});
 				}
@@ -941,7 +942,7 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 		var field = scope.field;
 		var tmpl = field.viewer;
 		if (!tmpl && field.editor && (field.editor.viewer || !field.targetName)) {
-			tmpl = '<div ui-panel-editor></div>';
+			tmpl = '<div class="o2m-editor-form" ui-panel-editor></div>';
 		}
 		if (!tmpl && field.targetName) {
 			tmpl = '{{record.' + field.targetName + '}}';
@@ -955,7 +956,7 @@ ui.formInput('InlineOneToMany', 'OneToMany', {
 	template_editable: function (scope) {
 		return "<div class='o2m-list'>" +
 			"<div class='o2m-list-row' ng-class-even=\"'even'\" ng-repeat='record in items'>" +
-				"<div ui-panel-editor></div>" +
+				"<div class='o2m-editor-form' ui-panel-editor></div>" +
 				"<span class='o2m-list-remove'>" +
 					"<a tabindex='-1' href='' ng-click='removeItem($index)' title='{{\"Remove\" | t}}'><i class='fa fa-times'></i></a>" +
 				"</span>" +

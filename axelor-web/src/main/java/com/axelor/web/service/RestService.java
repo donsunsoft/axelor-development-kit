@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -478,6 +478,7 @@ public class RestService extends ResourceService {
 	public Response export(Request request) {
 		final Response response = new Response();
 		final Map<String, Object> data = new HashMap<>();
+		request.setModel(getModel());
 		try {
 			final java.nio.file.Path tempFile = MetaFiles.createTempFile(null, ".csv");
 			try(final OutputStream os = new FileOutputStream(tempFile.toFile())) {
@@ -538,7 +539,7 @@ public class RestService extends ResourceService {
 		}
 
 		if (count) {
-			ctrl.unread(req, res);
+			ctrl.countUnread(req, res);
 			return res;
 		}
 		
@@ -560,6 +561,9 @@ public class RestService extends ResourceService {
 			return res;
 		case "important":
 			ctrl.important(req, res);
+			return res;
+		case "unread":
+			ctrl.unread(req, res);
 			return res;
 		default:
 			ctrl.inbox(req, res);

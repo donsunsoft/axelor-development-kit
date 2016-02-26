@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -176,6 +176,8 @@ ui.directive('uiMailMessage', function () {
 				if (!value) {
 					return value;
 				}
+				if (value === 'True') return _t('True');
+				if (value === 'False') return _t('False');
 				if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) {
 					return moment(value).format("DD/MM/YYYY HH:mm");
 				}
@@ -187,9 +189,10 @@ ui.directive('uiMailMessage', function () {
 
 			if (body && body.tracks) {
 				_.each(body.tracks, function (item) {
-					item.displayValue = format(item.value);
-					if (item.oldValue !== undefined) {
-						item.displayValue = format(item.oldValue) + " &raquo; " + item.displayValue;
+					item.displayValue = item.displayValue || format(item.value);
+					item.oldDisplayValue = item.oldDisplayValue || format(item.oldValue);
+					if (item.oldDisplayValue !== undefined) {
+						item.displayValue = item.oldDisplayValue + " &raquo; " + item.displayValue;
 					}
 				});
 			}
@@ -231,11 +234,11 @@ ui.directive('uiMailMessage', function () {
 									"<a href='javascript:' ng-show='message.$flags.isStarred' ng-click='onFlag(message, -2)' x-translate>Mark as not important</a>" +
 								"</li>" +
 								"<li ng-if='message.$thread' ng-show='::!message.parent'>" +
-									"<a href='javascript:' ng-show='::!message.$flags.isArchived' ng-click='onFlag(message, 3)'>Move to archive</a>" +
-									"<a href='javascript:' ng-show='::message.$flags.isArchived' ng-click='onFlag(message, -3)'>Move to inbox</a>" +
+									"<a href='javascript:' ng-show='::!message.$flags.isArchived' ng-click='onFlag(message, 3)' x-translate>Move to archive</a>" +
+									"<a href='javascript:' ng-show='::message.$flags.isArchived' ng-click='onFlag(message, -3)' x-translate>Move to inbox</a>" +
 								"</li>" +
 								"<li>" +
-									"<a href='javascript:' ng-show='::message.$canDelete' ng-click='onRemove(message)'>Delete</a>" +
+									"<a href='javascript:' ng-show='::message.$canDelete' ng-click='onRemove(message)' x-translate>Delete</a>" +
 								"</li>" +
 				            "</ul>" +
 						"</div>" +
@@ -256,7 +259,7 @@ ui.directive('uiMailMessage', function () {
 							"<span ng-if='::message.$name'> - </span>" +
 							"<span ng-if='::message.$title'>{{:: _t(message.$title) }}</span>" +
 						"</span>" +
-						"<span class='track-tags'>" +
+						"<span class='track-tags' ng-if='::body.tags.length'>" +
 							"<span class='label' ng-class='::item.css' ng-repeat='item in ::body.tags'>{{:: _t(item.title) }}</span>" +
 						"</span>" +
 					"</div>" +
@@ -509,13 +512,17 @@ ui.directive('uiMailFiles', [function () {
 				var url = "ws/rest/com.axelor.meta.db.MetaFile/" + file.id + "/content/download";
 				ui.download(url, file.fileName);
 			};
+
+			scope.fileIcon = function (file) {
+				return file.fileIcon || 'fa-paperclip';
+			}
 		},
 		replace: true,
 		template:
 			"<ul class='mail-files'>" +
 				"<li ng-repeat='file in files'>" +
 					"<i class='fa fa-close' ng-if='removable != \"false\"' ng-click='onRemoveFile(file)'></i>" +
-					"<i class='fa fa-paperclip' ng-if='removable == \"false\"'></i>" +
+					"<i class='fa fa-colored' ng-class='fileIcon(file)' ng-if='removable == \"false\"'></i>" +
 					"<a href='' ng-click='onDownload(file)'>{{file.fileName}}</a>" +
 				"</li>" +
 			"</ul>"
@@ -1018,6 +1025,7 @@ ui.formWidget('PanelMail', {
 		var tab = $scope.tab || {};
 
 		if (tab.action === "mail.inbox") folder = "inbox";
+		if (tab.action === "mail.unread") folder = "unread";
 		if (tab.action === "mail.important") folder = "important";
 		if (tab.action === "mail.archive") folder = "archive";
 

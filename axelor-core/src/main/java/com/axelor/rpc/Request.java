@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -191,9 +191,19 @@ public class Request {
 	 */
 	@JsonIgnore
 	public Context getContext() {
-		if (context != null || getBeanClass() == null) {
+		if (context != null) {
 			return context;
 		}
-		return context = Context.create(findContext(), getBeanClass());
+		final Map<String, Object> vars = findContext();
+		Class<?> klass;
+		try {
+			klass = Class.forName(vars.get("_model").toString());
+		} catch (Exception e) {
+			klass = getBeanClass();
+		}
+		if (klass == null) {
+			return null;
+		}
+		return context = Context.create(vars, klass);
 	}
 }

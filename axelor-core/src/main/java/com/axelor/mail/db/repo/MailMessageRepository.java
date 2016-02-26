@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -38,6 +38,7 @@ import com.axelor.db.EntityHelper;
 import com.axelor.db.JpaRepository;
 import com.axelor.db.Model;
 import com.axelor.db.mapper.Mapper;
+import com.axelor.db.mapper.Property;
 import com.axelor.i18n.I18n;
 import com.axelor.inject.Beans;
 import com.axelor.mail.MailConstants;
@@ -47,12 +48,14 @@ import com.axelor.mail.db.MailFlags;
 import com.axelor.mail.db.MailMessage;
 import com.axelor.mail.service.MailService;
 import com.axelor.meta.MetaFiles;
+import com.axelor.meta.MetaStore;
 import com.axelor.meta.db.MetaAction;
 import com.axelor.meta.db.MetaAttachment;
 import com.axelor.meta.db.MetaFile;
 import com.axelor.meta.db.repo.MetaActionRepository;
 import com.axelor.meta.db.repo.MetaAttachmentRepository;
 import com.axelor.rpc.Resource;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.persist.Transactional;
 
 public class MailMessageRepository extends JpaRepository<MailMessage> {
@@ -255,6 +258,34 @@ public class MailMessageRepository extends JpaRepository<MailMessage> {
 				EntityHelper.getEntityClass(message).getName()).fetch();
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private String updateBody(MailMessage message) throws Exception {
+		final String body = message.getBody();
+		if (!MailConstants.MESSAGE_TYPE_NOTIFICATION.equals(message.getType()) || message.getRelatedModel() == null) {
+			return body;
+		}
+		if (message.getBody() == null || message.getBody().trim().charAt(0) != '{') {
+			return body;
+		}
+		final Mapper mapper = Mapper.of(Class.forName(message.getRelatedModel()));
+		final ObjectMapper json = Beans.get(ObjectMapper.class);
+		final Map<String, Object> bodyData = json.readValue(body, Map.class);
+		final List<Map<String, String>> values = new ArrayList<>();
+
+		for (Map<String, String> item : (List<Map>) bodyData.get("tracks")) {
+			values.add(item);
+			final Property property = mapper.getProperty(item.get("name"));
+			if (property == null || property.getSelection() == null) {
+				continue;
+			}
+			item.put("displayValue", MetaStore.getSelectionItem(property.getSelection(), item.get("value")).getLocalizedTitle());
+			item.put("oldDisplayValue", MetaStore.getSelectionItem(property.getSelection(), item.get("oldValue")).getLocalizedTitle());
+		}
+
+		bodyData.put("tracks", values);
+		return json.writeValueAsString(bodyData);
+	}
+
 	public Map<String, Object> details(MailMessage message) {
 		final String[] fields = { "id", "type", "subject", "body", "summary", "relatedId", "relatedModel", "relatedName" };
 		final Map<String, Object> details = Resource.toMap(message, fields);
@@ -267,7 +298,9 @@ public class MailMessageRepository extends JpaRepository<MailMessage> {
 		final List<MetaAttachment> attachments = findAttachments(message);
 
 		for (MetaAttachment attachment : attachments) {
-			files.add(Resource.toMapCompact(attachment.getMetaFile()));
+			final Map<String, Object> fileInfo = Resource.toMapCompact(attachment.getMetaFile());
+			fileInfo.put("fileIcon", Beans.get(MetaFiles.class).fileTypeIcon(attachment.getMetaFile()));
+			files.add(fileInfo);
 		}
 
 		if (flags != null) {
@@ -303,6 +336,11 @@ public class MailMessageRepository extends JpaRepository<MailMessage> {
 		String avatar = "img/user.png";
 		if (user != null && user.getImage() != null) {
 			avatar = "ws/rest/" + User.class.getName() + "/" + user.getId() + "/image/download?image=true&v=" + user.getVersion();
+		}
+
+		try {
+			details.put("body", updateBody(message));
+		} catch (Exception e) {
 		}
 
 		details.put("$avatar", avatar);

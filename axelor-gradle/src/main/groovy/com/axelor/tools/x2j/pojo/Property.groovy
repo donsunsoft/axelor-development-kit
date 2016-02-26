@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -549,6 +549,7 @@ class Property {
 		def password = attrs['password']
 		def massUpdate = attrs['massUpdate']
 		def translatable = attrs['translatable']
+		def copyable = attrs['copy']
 
 		if (massUpdate && (isUnique() || isCollection() || attrs['large'])) {
 			massUpdate = false;
@@ -559,7 +560,7 @@ class Property {
 		}
 
 		if (title || help || readonly || hidden || multiline || selection ||
-			image || isPassword() || massUpdate || search || translatable)
+			image || isPassword() || massUpdate || search || translatable || copyable)
 			annon("com.axelor.db.annotations.Widget")
 				.add("image", image, false)
 				.add("title", title)
@@ -572,6 +573,7 @@ class Property {
 				.add("password", password, false)
 				.add("massUpdate", massUpdate, false)
 				.add("translatable", translatable, false)
+				.add("copyable", copyable, false)
 	}
 
 	private List<Annotation> $binary() {

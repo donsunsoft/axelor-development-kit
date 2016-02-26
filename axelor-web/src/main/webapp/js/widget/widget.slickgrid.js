@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -204,9 +204,14 @@ var Editor = function(args) {
 	function focus() {
 		// Firefox throws exception if element is hidden
 		if (element.is(':hidden')) return;
-		if (element.is(':input'))
-			return element.focus().select();
-		element.find(':input:first').focus().select();
+		if (element.is(':input')) {
+			element.focus().select();
+		} else {
+			element.find(':input:first').focus().select();
+		}
+		if (element.is('[x-cell-css*=select-item]') && element.scope().showSelection) {
+			element.scope().showSelection(300);
+		}
 	}
 
 	this.focus = function() {
@@ -347,12 +352,14 @@ var Formatters = {
 				elem += ' title="' + field.help + '"';
 			}
 			elem += '><i class="' + css + '"></i></a>';
-		} else {
+		} else if (field.icon) {
 			elem = '<img class="' + css + '" src="' + field.icon + '"';
 			if (field.help) {
 				elem += ' title="' + field.help + '"';
 			}
 			elem += '>';
+		} else {
+			return "";
 		}
 		
 		return elem;
@@ -1034,10 +1041,21 @@ Grid.prototype._doInit = function(view) {
 	
 	scope.$on("on:before-save", function(e) {
 
+		// only for editable grid
+		if (!that.editable) {
+			return;
+		}
+
+		var row = null;
 		var lock = grid.getEditorLock();
 		if (lock.isActive()) {
 			lock.commitCurrentEdit();
+			row = grid.getDataItem(grid.getDataLength() - 1); // to check if adding new row
 		}
+
+		var beforeSavePending = that.__beforeSavePending || (row && row.id === 0);
+
+		that.__beforeSavePending = false;
 
 		function showErrorNotice() {
 
@@ -1069,7 +1087,7 @@ Grid.prototype._doInit = function(view) {
 			return false;
 		}
 
-		if (!that.isDirty() || that.saveChanges()) {
+		if (!that.isDirty() || !beforeSavePending || that.saveChanges()) {
 			return;
 		}
 		if (!that.editorScope || that.editorScope.isValid()) {
@@ -1684,6 +1702,8 @@ Grid.prototype.markDirty = function(row, field) {
 	grid.setCellCssStyles("highlight", hash);
 	grid.invalidateAllRows();
 	grid.render();
+
+	this.__beforeSavePending = true;
 };
 
 Grid.prototype.clearDirty = function(row) {
@@ -1699,6 +1719,8 @@ Grid.prototype.clearDirty = function(row) {
 	grid.setCellCssStyles("highlight", hash);
 	grid.invalidateAllRows();
 	grid.render();
+
+	this.__beforeSavePending = false;
 };
 
 Grid.prototype.focusInvalidCell = function(args) {

@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -108,10 +108,10 @@ final class AuditTracker {
 			return "";
 		}
 		if (value == Boolean.TRUE) {
-			return I18n.get("True");
+			return "True";
 		}
 		if (value == Boolean.FALSE) {
-			return I18n.get("False");
+			return "True";
 		}
 		switch (property.getType()) {
 		case MANY_TO_ONE:
@@ -229,6 +229,7 @@ final class AuditTracker {
 			tagFields.add(name);
 
 			final Map<String, String> item = new HashMap<>();
+			item.put("name", property.getName());
 			item.put("title", title);
 			item.put("value", format(property, value));
 
@@ -277,7 +278,7 @@ final class AuditTracker {
 		} catch (Exception e) {
 		}
 
-		if (previousState == null) {
+		if (previousState == null && track.subscribe()) {
 			final MailFollower follower = new MailFollower();
 			follower.setRelatedId(entity.getId());
 			follower.setRelatedModel(entity.getClass().getName());

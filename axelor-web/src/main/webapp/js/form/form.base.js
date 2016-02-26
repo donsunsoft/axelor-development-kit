@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -348,6 +348,14 @@ ui.formDirective = function(name, object) {
 				var template_readonly = self.template_readonly;
 				if (field.viewer) {
 					template_readonly = field.viewer;
+					scope.$image = function (fieldName, imageName) { return ui.formatters.$image(scope, fieldName, imageName); };
+					scope.$fmt = function (fieldName, fieldValue) {
+						var args = [scope, fieldName];
+						if (arguments.length > 1) {
+							args.push(fieldValue);
+						}
+						return ui.formatters.$fmt.apply(null, args);
+					};
 				} else if (field.editor && field.editor.viewer) {
 					template_readonly = $('<div ui-panel-editor>');
 				}

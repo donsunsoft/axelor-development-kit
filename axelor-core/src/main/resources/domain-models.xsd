@@ -203,6 +203,13 @@
         </xsd:documentation>
       </xsd:annotation>
     </xsd:attribute>
+    <xsd:attribute name="copy" type="xsd:boolean" default="true">
+      <xsd:annotation>
+        <xsd:documentation>
+        Whether to use this field when creating duplicate record?
+        </xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
   </xsd:complexType>
 
   <xsd:complexType name="SimpleColumn">
@@ -686,6 +693,11 @@
         </xsd:complexType>
       </xsd:element>
     </xsd:sequence>
+    <xsd:attribute name="subscribe" type="xsd:boolean">
+      <xsd:annotation>
+        <xsd:documentation>Specify whether to auto subscribe for change notifications.</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
     <xsd:attribute name="replace" type="xsd:boolean">
       <xsd:annotation>
         <xsd:documentation>Specify whether to replace original change track config.</xsd:documentation>

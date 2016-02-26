@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -507,6 +507,7 @@ ui.formWidget('PanelTabs', {
 		});
 		
 		var selected = null;
+		var adjustPending = false;
 
 		function findTab(tab) {
 			var found = scope.tabs[tab] || tab;
@@ -568,6 +569,8 @@ ui.formWidget('PanelTabs', {
 				return;
 			}
 
+			adjustPending = true;
+
 			found.hidden = false;
 			found.tabItem.show();
 
@@ -585,6 +588,8 @@ ui.formWidget('PanelTabs', {
 			if (!found) {
 				return;
 			}
+
+			adjustPending = true;
 
 			var wasHidden = found.hidden;
 
@@ -645,7 +650,7 @@ ui.formWidget('PanelTabs', {
 			}
 
 			var parentWidth = element.width() - 2;
-			if (parentWidth === lastWidth && lastTab === selected) {
+			if (parentWidth === lastWidth && lastTab === selected && !adjustPending) {
 				return;
 			}
 			lastWidth = parentWidth;
@@ -683,8 +688,12 @@ ui.formWidget('PanelTabs', {
 			}
 
 			elemMenuItems.hide();
+			var tab = null;
 			while(index < scope.tabs.length) {
-				$(elemMenuItems[index++]).show();
+				tab = scope.tabs[index++];
+				if (!tab.hidden) {
+					tab.menuItem.show();
+				}
 			}
 
 			elemTabs.parent().css('visibility', '');
@@ -698,6 +707,7 @@ ui.formWidget('PanelTabs', {
 				adjust();
 			} finally {
 				adjusting = false;
+				adjustPending = false;
 			}
 		}, 10));
 

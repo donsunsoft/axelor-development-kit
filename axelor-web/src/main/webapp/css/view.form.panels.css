@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -44,6 +44,7 @@
 	padding: 11px 15px 14px;
 	border-top: 4px solid #e7e7e7;
 	border-bottom: 1px solid #e7e7e7;
+	margin-top: -1px;
 }
 
 .panel-nested > .panel-header {
@@ -572,6 +573,23 @@
 		text-align: right;
 		width: 48%;
 	}
+}
+
+.help-item {
+	border-radius: 0;
+}
+
+.panel .help-item {
+	margin: 0;
+}
+
+.help-item:after {
+	font: normal normal normal 14px/1 FontAwesome;
+	content: "\f10e";
+}
+.help-item:before {
+	font: normal normal normal 14px/1 FontAwesome;
+	content: "\f10d";
 }
 
 .info-button {

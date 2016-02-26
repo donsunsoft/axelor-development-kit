@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -379,6 +379,7 @@
 
 .dms-popup {
 	margin-top: -1px;
+	padding: 1px 0 0 !important;
 }
 
 .dms-popup > div,
@@ -388,7 +389,7 @@
 }
 
 .dms-popup > div > .grid-view {
-	border: 1px solid #e7e7e7;
+	border: 0;
 }
 
 .dms-permission-popup {
@@ -417,4 +418,47 @@
 .spreadsheet-item .ui-resizable-s {
 	background-color: #e7e7e7;
 	border-color: #e7e7e7;
+}
+
+.dms-folder-tree i.fa-folder {
+	font-size: 18px;
+	vertical-align: middle;
+    margin-right: 4px;
+    margin-top: -1px;
+}
+
+i.fa-colored.fa-folder {
+	color: #FFA726;
+}
+
+i.fa-colored.fa-file-o {
+	color: #767676;
+}
+
+i.fa-colored.fa-file-text-o {
+	color: #2185D0;
+}
+
+i.fa-colored.fa-file-word-o {
+	color: #2185D0;
+}
+
+i.fa-colored.fa-file-excel-o {
+	color: #21BA45;
+}
+
+i.fa-colored.fa-file-pdf-o {
+	color: #DB2828;
+}
+
+i.fa-colored.fa-file-image-o {
+	color: #6435C9;
+}
+
+i.fa-colored.fa-file-video-o {
+	color: #DB2828;
+}
+
+i.fa-colored.fa-file-archive-o {
+	color: #A5673F;
 }

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -341,17 +341,24 @@ ui.directive('uiPanelEditor', ['$compile', 'ActionService', function($compile, A
 				return;
 			}
 
-			var items = editor.items || [];
-			var widths = _.map(items, function (item) {
-				if (item.showTitle === undefined) {
+			function applyAttrs(item) {
+				if (item.showTitle === undefined && !item.items) {
 					item.showTitle = (editor.widgetAttrs||{}).showTitles !== "false";
 				}
-				if (!item.showTitle) {
+				if (!item.showTitle && !item.items) {
 					item.placeholder = item.placeholder || item.title || item.autoTitle;
 				}
 				if (editor.itemSpan && !item.colSpan) {
 					item.colSpan = editor.itemSpan;
 				}
+				if (item.items) {
+					_.map(item.items, applyAttrs);
+				}
+			}
+
+			var items = editor.items || [];
+			var widths = _.map(items, function (item) {
+				applyAttrs(item);
 				var width = item.width || (item.widgetAttrs||{}).width;
 				return width ? width : (item.widget === 'toggle' ? 24 : '*');
 			});

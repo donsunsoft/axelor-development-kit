@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -50,7 +50,7 @@ function parseNumber(field, value) {
 
 ui.formWidget('BaseSelect', {
 	
-	showSelectionOn: "click",
+	showSelectionOn: "focus",
 
 	findInput: function(element) {
 		return element.find('input:first');
@@ -79,14 +79,22 @@ ui.formWidget('BaseSelect', {
 
 		var input = this.findInput(element);
 
-		scope.showSelection = function(e) {
+		scope.showSelection = function(delay) {
 			if (scope.isReadonly()) {
 				return;
 			}
-			if (!axelor.device.mobile) {
-				input.focus();
+			if (input.is('.x-focus')) {
+				input.removeClass('.x-focus');
+				return;
 			}
-			input.autocomplete("search" , '');
+			input.addClass('.x-focus');
+			doSetup(input);
+			setTimeout(function () {
+				if (input.is(':focus')) {
+					input.autocomplete("search" , '');
+					input.removeClass('.x-focus');
+				}
+			}, delay || 100);
 		};
 
 		scope.handleClear = function(e) {
@@ -179,15 +187,16 @@ ui.formWidget('BaseSelect', {
 				}
 			});
 		});
-		
-		input.focus(function() {
-			doSetup(input);
+
+		input.focus(function(e) {
 			element.addClass('focus');
-			if (showOn === "focus") {
-				scope.showSelection();
-			}
 		}).blur(function() {
 			element.removeClass('focus');
+		}).keyup(function(e) {
+			// if TAB key
+			if (e.which === 9 && showOn === "focus") {
+				scope.showSelection(300);
+			}
 		}).keydown(function(e) {
 			var KEY = $.ui.keyCode;
 			switch(e.keyCode) {
@@ -196,8 +205,7 @@ ui.formWidget('BaseSelect', {
 				scope.handleDelete(e);
 			}
 		}).click(function() {
-			doSetup(input);
-			if (showOn === "click") {
+			if (showOn === "click" || showOn === "focus") {
 				scope.showSelection();
 			}
 		});
@@ -543,12 +551,14 @@ ui.formInput('MultiSelect', 'Select', {
 			update(items);
 		};
 		
-		var __showSelection = scope.showSelection;
-		scope.showSelection = function(e) {
+		scope.onShowSelection = function(e) {
 			if (e && $(e.target || e.srcElement).is('li,i,span.tag-text')) {
 				return;
 			}
-			return __showSelection(e);
+			input.focus();
+			setTimeout(function() {
+				scope.showSelection();
+			});
 		};
 
 		scope.handleDelete = function(e) {
@@ -606,7 +616,7 @@ ui.formInput('MultiSelect', 'Select', {
 	},
 	template_editable:
 	'<div class="tag-select picker-input">'+
-	  '<ul ng-click="showSelection($event)">'+
+	  '<ul ng-click="onShowSelection($event)">'+
 		'<li class="tag-item label label-info" ng-repeat="item in items">'+
 			'<span ng-class="{\'tag-link\': handleClick}" class="tag-text" ng-click="handleClick($event, item.value)">{{item.title}}</span> '+
 			'<i class="fa fa-times fa-small" ng-click="removeItem(item)"></i>'+
@@ -616,7 +626,7 @@ ui.formInput('MultiSelect', 'Select', {
 		'</li>'+
 	  '</ul>'+
 	  '<span class="picker-icons">'+
-	  	'<i class="fa fa-caret-down" ng-click="showSelection()"></i>'+
+	  	'<i class="fa fa-caret-down" ng-click="onShowSelection()"></i>'+
 	  '</span>'+
 	'</div>',
 	template_readonly:
@@ -701,6 +711,61 @@ ui.formInput('RadioSelect', {
 			'<input type="radio" name="radio_{{$parent.$id}}" value="{{select.value}}"'+
 			' ng-disabled="isReadonly()"'+
 			' ng-checked="getValue() == select.value">'+
+			'<span class="box"></span>'+
+			'<span class="title">{{select.title}}</span>'+
+		'</label>'+
+		'</li>'+
+	'</ul>'
+});
+
+ui.formInput('CheckboxSelect', {
+
+	css: "checkbox-select",
+
+	link: function(scope, element, attrs, model) {
+
+		var field = scope.field;
+		var selection = field.selectionList || [];
+
+		scope.getSelection = function () {
+			return filterSelection(scope, field, selection, scope.getValue());
+		};
+
+		scope.isSelected = function (select) {
+			var value = scope.getValue();
+			var current = ("" + value).split(",").map(function (val) {
+				return parseNumber(scope.field, val);
+			});
+			return current.indexOf(select.value) > -1;
+		};
+
+		element.on("change", ":input", function(e) {
+			var all = element.find("input:checked");
+			var selected = [];
+			all.each(function () {
+				var val = parseNumber(scope.field, $(this).val());
+				selected.push(val);
+			});
+			var value =  selected.length === 0 ? null : selected.join(",");
+			scope.setValue(value, true);
+			scope.$apply();
+		});
+
+		if (field.direction === "vertical" || field.dir === "vert") {
+			setTimeout(function(){
+				element.addClass("checkbox-select-vertical");
+			});
+		}
+	},
+	template_editable: null,
+	template_readonly: null,
+	template:
+	'<ul ng-class="{ readonly: isReadonly() }">'+
+		'<li ng-repeat="select in getSelection()">'+
+		'<label class="ibox">'+
+			'<input type="checkbox" value="{{select.value}}"'+
+			' ng-disabled="isReadonly()"'+
+			' ng-checked="isSelected(select)">'+
 			'<span class="box"></span>'+
 			'<span class="title">{{select.title}}</span>'+
 		'</label>'+
