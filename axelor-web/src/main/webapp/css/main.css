@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -39,6 +39,7 @@ strong {
 #container {
 	left: 0px; right: 0px; top: 41px; bottom: 0px;
 	position:	absolute;
+	min-width: 320px;
 }
 
 @media (max-width: 979px) {
@@ -72,6 +73,7 @@ header .container-fluid {
 	header .navbar-fixed-top {
 		margin-left: 0;
 		margin-right: 0;
+		min-width: 320px;
 	}
 }
 
@@ -439,6 +441,13 @@ header .navbar .nav-link-user-sub {
 	top: 0px; left: 0px; right: 0px; bottom: 0px;
 }
 
+.view-pane > .view-container.has-toolbar {
+	top: -6px;
+}
+.view-tabs-single .view-pane > .view-container.has-toolbar {
+	top: 0;
+}
+
 .grid-view > .slickgrid {
 	position: absolute !important;
 	top: 40px; left: 0px; right: 0px; bottom: 0px;
@@ -495,6 +504,11 @@ header .navbar .nav-link-user-sub {
 .record-toolbar .view-toolbar-mobile,
 .record-toolbar .view-menubar-mobile {
 	margin: 0;
+}
+.record-toolbar-right {
+	top: 0;
+	right: 6px;
+	position: absolute;
 }
 
 @media (max-width: 767px) {
@@ -606,7 +620,7 @@ header .navbar .nav-link-user-sub {
 
 .html-view > .iframe-container {
 	position: absolute;
-	top: 4px; bottom: 4px; left: 4px; right: 4px;	
+	top: 0; bottom: 0; left: 0; right: 0;
 }
 
 .iframe-container > iframe {
@@ -804,9 +818,10 @@ img.prefix-icon {
 }
 
 .view-tabs-single .navigation-tabs > .nav-tabs > li > i {
+    width: 28px;
     float: right;
     font-size: 14px;
     line-height: 32px;
-    margin-right: 16px;
+    text-align: center;
     cursor: pointer;
 }

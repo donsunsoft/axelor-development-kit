@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -116,6 +116,16 @@ ui.directive('uiViewDashboard', ['ViewService', function(ViewService) {
 					return ViewService.save(schema);
 				}
 			};
+
+			var unwatch = scope.$watch("schema", function (schema) {
+				if (!schema) {
+					return;
+				}
+				unwatch();
+				if (schema.css) {
+					element.addClass(schema.css);
+				}
+			});
 		},
 		replace: true,
 		transclude: true,

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -708,6 +708,61 @@ ui.formInput('RadioSelect', {
 	'</ul>'
 });
 
+ui.formInput('CheckboxSelect', {
+
+	css: "checkbox-select",
+
+	link: function(scope, element, attrs, model) {
+
+		var field = scope.field;
+		var selection = field.selectionList || [];
+
+		scope.getSelection = function () {
+			return filterSelection(scope, field, selection, scope.getValue());
+		};
+
+		scope.isSelected = function (select) {
+			var value = scope.getValue();
+			var current = ("" + value).split(",").map(function (val) {
+				return parseNumber(scope.field, val);
+			});
+			return current.indexOf(select.value) > -1;
+		};
+
+		element.on("change", ":input", function(e) {
+			var all = element.find("input:checked");
+			var selected = [];
+			all.each(function () {
+				var val = parseNumber(scope.field, $(this).val());
+				selected.push(val);
+			});
+			var value =  selected.length === 0 ? null : selected.join(",");
+			scope.setValue(value, true);
+			scope.$apply();
+		});
+
+		if (field.direction === "vertical" || field.dir === "vert") {
+			setTimeout(function(){
+				element.addClass("checkbox-select-vertical");
+			});
+		}
+	},
+	template_editable: null,
+	template_readonly: null,
+	template:
+	'<ul ng-class="{ readonly: isReadonly() }">'+
+		'<li ng-repeat="select in getSelection()">'+
+		'<label class="ibox">'+
+			'<input type="checkbox" value="{{select.value}}"'+
+			' ng-disabled="isReadonly()"'+
+			' ng-checked="isSelected(select)">'+
+			'<span class="box"></span>'+
+			'<span class="title">{{select.title}}</span>'+
+		'</label>'+
+		'</li>'+
+	'</ul>'
+});
+
 ui.formInput('NavSelect', {
 	
 	css: "nav-select",
@@ -720,7 +775,11 @@ ui.formInput('NavSelect', {
 		scope.getSelection = function () {
 			return filterSelection(scope, field, selection, scope.getValue()) || [];
 		};
-		
+
+		scope.$watch('text', function (text, old) {
+			adjust();
+		});
+
 		scope.onSelect = function(select) {
 			if (scope.attr('readonly')) {
 				return;
@@ -730,10 +789,9 @@ ui.formInput('NavSelect', {
 			
 			elemNavs.removeClass('open');
 			elemMenu.removeClass('open');
-			setMenuTitle();
 
 			// if selection change is used to show/hide some elements
-			// the layout should be adjustted
+			// the layout should be adjusted
 			axelor.$adjustSize();
 		};
 
@@ -741,49 +799,37 @@ ui.formInput('NavSelect', {
 			return select && scope.getValue() == select.value;
 		};
 
-		scope.onMenuClick = _.once(function(e) {
-			var elem = $(e.currentTarget);
-			elem.dropdown();
-			elem.dropdown('toggle');
-		});
-
 		var lastWidth = 0;
 		var lastValue = null;
-		var menuWidth = 120; // max-width
 		var elemNavs = null;
 		var elemMenu = null;
+		var elemMenuTitle = null;
 		var elemMenuItems = null;
 
 		function setup() {
 			elemNavs = element.children('.nav-steps').children('li:not(.dropdown,.ignore)');
 			elemMenu = element.children('.nav-steps').children('li.dropdown');
+			elemMenuTitle = elemMenu.find('a.nav-label > span');
 			elemMenuItems = elemMenu.find('li');
 		}
 
-		function setMenuTitle() {
-			var more = null;
-			var show = false;
-			var navs = scope.getSelection();
-			elemMenuItems.each(function (i) {
-				var elem = $(this);
-				var nav = navs[i] || {};
-				if (elem.data('visible')) show = true;
-				if (scope.isSelected(nav) && show) {
-					more = nav;
-				}
+		var setMenuTitle = (function() {
+			var setActive = _.debounce(function(selected) {
+				elemMenu.toggleClass('active', !!selected);
 			});
-			scope.more = more;
-			if (show) {
+			return function setMenuTitle(selected) {
 				elemMenu.show();
+				elemMenuTitle.html(selected && selected.title);
+				setActive(selected);
 			}
-		}
+		}());
 
 		function adjust() {
 			if (elemNavs === null || element.is(":hidden")) {
 				return;
 			}
 			var currentValue = scope.getValue();
-			var parentWidth = element.width() - menuWidth;
+			var parentWidth = element.width() - 16;
 			if (parentWidth === lastWidth && currentValue === lastValue) {
 				return;
 			}
@@ -791,34 +837,36 @@ ui.formInput('NavSelect', {
 			lastValue = currentValue;
 
 			elemNavs.parent().css('visibility', 'hidden');
-			elemNavs.hide();
+			elemNavs.show();
 			elemMenu.hide();
-			elemMenuItems.hide().data('visible', null);
-			scope.more = null;
 
-			var count = 0;
-			var width = 0;
-			var last = null;
+			if (elemNavs.parent().width() <= parentWidth) {
+				elemNavs.parent().css('visibility', '');
+				return;
+			}
+
 			var navs = scope.getSelection();
+			var selected = _.find(navs, scope.isSelected.bind(scope));
+			var selectedIndex = navs.indexOf(selected);
 
-			while (count < navs.length) {
-				var elem = $(elemNavs[count]).show();
-				width += elem.width();
-				if (width > parentWidth && last) {
-					// show menu...
-					elem.hide();
-					break;
+			var elem = null;
+			var index = navs.length;
+
+			setMenuTitle(null);
+
+			while (elemNavs.parent().width() > parentWidth) {
+				elem = $(elemNavs[--index]);
+				elem.hide();
+				if (index === selectedIndex) {
+					setMenuTitle(selected);
 				}
-				last = elem;
-				count++;
 			}
-			if (count === elemNavs.size()) {
-				elemMenu.hide();
+
+			elemMenuItems.hide();
+			while(index < navs.length) {
+				$(elemMenuItems[index++]).show();
 			}
-			while(count < elemNavs.size()) {
-				$(elemMenuItems[count++]).show().data('visible', true);
-			}
-			setMenuTitle();
+
 			elemNavs.parent().css('visibility', '');
 		}
 
@@ -829,20 +877,34 @@ ui.formInput('NavSelect', {
 	template_readonly: null,
 	template:
 		"<div class='nav-select'>" +
-		"<ul class='nav-steps' style='display: inline-flex; visibility: hidden;'>" +
-			"<li class='nav-step' ng-repeat='select in getSelection()' ng-class='{ active: isSelected(select), last: $last }'>" +
-				"<a href='' class='nav-label' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
-			"</li>" +
-			"<li class='nav-step dropdown' ng-class='{ active: isSelected(more) }'>" +
-				"<a href='' class='nav-label dropdown-toggle' ng-click='onMenuClick($event)'><span ng-bind-html='more.title'></span></a>" +
-				"<ul class='dropdown-menu pull-right' data-toggle='dropdown'>" +
-					"<li ng-repeat='select in getSelection()' ng-class='{active: getValue() == select.value}'>" +
-						"<a tabindex='-1' href='' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
-					"</li>" +
-				"</ul>" +
-			"</li>" +
-		"</ul>"+
+			"<ul class='nav-steps' style='display: inline-flex; visibility: hidden;'>" +
+				"<li class='nav-step' ng-repeat='select in getSelection()' ng-class='{ active: isSelected(select), last: $last }'>" +
+					"<a href='' class='nav-label' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
+				"</li>" +
+				"<li class='nav-step dropdown'>" +
+					"<a href='' class='nav-label dropdown-toggle' data-toggle='dropdown'><span></span></a>" +
+					"<ul class='dropdown-menu pull-right'>" +
+						"<li ng-repeat='select in getSelection()' ng-class='{active: getValue() == select.value}'>" +
+							"<a tabindex='-1' href='' ng-click='onSelect(select)' ng-bind-html='select.title'></a>" +
+						"</li>" +
+					"</ul>" +
+				"</li>" +
+			"</ul>"+
 		"</div>"
+});
+
+ui.formInput('ThemeSelect', 'Select', {
+
+	init: function (scope) {
+		scope.field.selectionList = _.map(axelor.config['application.themes'], function (name) {
+			return { value: name, title: _.titleize(name) };
+		});
+		scope.field.selectionList.unshift({
+			value: "default",
+			title: "Default"
+		});
+		this._super(scope);
+	}
 });
 
 })();

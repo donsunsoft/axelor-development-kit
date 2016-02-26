@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -67,8 +67,12 @@ public class SimpleAdapter implements TypeAdapter<Object> {
 		if (type == Short.TYPE || type == Short.class)
 			return Short.valueOf(value.toString());
 
-		if (type == Integer.TYPE || type == Integer.class)
+		if (type == Integer.TYPE || type == Integer.class) {
+			if (value instanceof Number) {
+				return ((Number) value).intValue();
+			}
 			return Integer.valueOf(value.toString());
+		}
 
 		if (type == Long.TYPE || type == Long.class)
 			return Long.valueOf(value.toString());

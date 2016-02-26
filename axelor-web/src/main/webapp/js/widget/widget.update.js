@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -36,7 +36,8 @@ ui.directive('uiUpdateButton', ['$compile', function ($compile) {
 			
 			scope.onMassUpdate = function (e) {
 				if (menu && menu.is(':visible')) {
-					return hideMenu();
+					hideMenu();
+					return;
 				}
 				toggleButton = $(e.currentTarget);
 				toggleButton.addClass("active");
@@ -349,7 +350,7 @@ ui.directive('uiUpdateForm',  function () {
 			
 			function adjustEditors() {
 				
-				element.find('[x-place-for] .form-item-container').each(function () {
+				element.find('[x-place-for] [x-field]').each(function () {
 					var editor = $(this);
 					var parent = editor.data('$parent');
 					editor.appendTo(parent);
@@ -362,7 +363,7 @@ ui.directive('uiUpdateForm',  function () {
 			
 			function adjustEditor(name) {
 				var span = element.find('[x-place-for=' + name + ']');
-				var editor = element.find('[x-field=' + name + '].form-item-container');
+				var editor = element.find('[x-field=' + name + '].form-item-container,[x-field=' + name + '].boolean-item').first();
 				var parent = editor.data('$parent');
 				if (!parent) {
 					parent = editor.parent();

@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -53,7 +53,7 @@ _.each(["long", "decimal", "date", "time", "datetime"], function(type) {
 	OPERATORS_BY_TYPE[type] = OPERATORS_BY_TYPE.integer;
 });
 
-_.each(["text", "many-to-one", "one-to-many", "many-to-many"], function(type) {
+_.each(["text", "one-to-one", "many-to-one", "one-to-many", "many-to-many"], function(type) {
 	OPERATORS_BY_TYPE[type] = OPERATORS_BY_TYPE.string;
 });
 
@@ -134,11 +134,17 @@ ui.directive('uiFilterItem', function() {
 					filter.type = 'selection';
 				}
 
-				if (field.type === 'many-to-one') {
+				if (field.type === 'many-to-one' || field.type === 'one-to-one') {
 					filter.targetName = field.targetName;
 				} else {
 					filter.targetName = null;
 				}
+			};
+
+			scope.onOperatorChange = function() {
+				setTimeout(function() {
+					scope.$parent.$parent.$parent.doAdjust();
+				});
 			};
 
 			scope.$watch('filter.field', function (value, old) {
@@ -163,7 +169,7 @@ ui.directive('uiFilterItem', function() {
 						"<select ng-model='filter.field' ng-options='v.name as v.title for v in options' ng-change='onFieldChange()' class='input-medium'></select> " +
 					"</td>" +
 					"<td class='form-item filter-select'>" +
-						"<select ng-model='filter.operator' ng-options='o.name as o.title for o in operators' class='input-medium'></select> "+
+						"<select ng-model='filter.operator' ng-options='o.name as o.title for o in operators' ng-change='onOperatorChange()' class='input-medium'></select> "+
 					"</td>" +
 					"<td class='form-item filter-select' ng-show='canShowSelect()'>" +
 						"<select ng-model='filter.value' class='input=medium' ng-options='o.value as o.title for o in getSelection()'></select>" +
@@ -281,6 +287,7 @@ function FilterFormCtrl($scope, $element, ViewService) {
 
 			var items = {};
 			var nameField = null;
+			var nameFields = [];
 
 			_.each(fields, function(field, name) {
 				if (field.name === 'id' || field.name === 'version' ||
@@ -288,9 +295,13 @@ function FilterFormCtrl($scope, $element, ViewService) {
 				if (field.type === 'binary' || field.large) return;
 				if (field.nameColumn) {
 					nameField = name;
+				} else if (name === "name" || name === "code") {
+					nameFields.push(name);
 				}
 				items[name] = field;
 			});
+
+			nameField = nameField || _.first(nameFields);
 
 			_.each(viewItems, function (item) {
 				if (item.hidden) {
@@ -401,7 +412,7 @@ function FilterFormCtrl($scope, $element, ViewService) {
 				}
 			}
 			
-			if (filter.type == 'many-to-one') {
+			if (filter.type == 'many-to-one' || field.type === 'one-to-one') {
 				filter.targetName = field.targetName;
 			}
 
@@ -593,14 +604,13 @@ ui.directive('uiFilterBox', function() {
 			if (filterView) {
 				ViewService.getMetaDef($scope.model, {name: filterView, type: 'search-filters'})
 				.success(function(fields, view) {
-					$scope.view = view;
-					$scope.viewItems = angular.copy(view.items) || [];
-					$scope.viewFilters = angular.copy(view.filters);
-					_.each($scope.viewItems, function (item) {
+					var viewItems = _.map(view.items, function (item) {
 						var field = fields[item.name] || {};
-						item.type = field.type;
-						item.title = item.title || field.title;
+						return _.extend({}, field, item, { type: field.type });
 					});
+					$scope.view = view;
+					$scope.viewItems = viewItems;
+					$scope.viewFilters = angular.copy(view.filters);
 				});
 			} else {
 				$scope.viewItems = [];
@@ -958,6 +968,7 @@ ui.directive('uiFilterBox', function() {
 					case 'string':
 						fieldName = name;
 						break;
+					case 'one-to-one':
 					case 'many-to-one':
 						if (field.targetName) {
 							fieldName = name + '.' + field.targetName;
@@ -1001,18 +1012,31 @@ ui.directive('uiFilterBox', function() {
 				}
 				toggleButton = $(e.currentTarget);
 				menu.show();
-				menu.position({
-					my: "left top",
-					at: "left bottom",
-					of: element
-				});
+				scope.doAdjust();
+
 				$(document).on('mousedown.search-menu', onMouseDown);
 				
 				scope.applyLater(function () {
 					scope.visible = true;
 				});
 			};
-			
+
+			scope.doAdjust = (function() {
+				var opts = {
+					my: "left top",
+					at: "left bottom",
+					of: element,
+					collision: "fit"
+				};
+				if (element.hasClass('pull-right')) {
+					opts.my = "right top";
+					opts.at = "right bottom"
+				}
+				return function() {
+					menu.position(opts);
+				}
+			}());
+
 			scope.onClearFilter = function () {
 				hideMenu();
 				scope.visible = true;

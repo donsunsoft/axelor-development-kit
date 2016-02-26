@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -189,7 +189,7 @@ ui.directive('uiMailMessage', function () {
 				_.each(body.tracks, function (item) {
 					item.displayValue = format(item.value);
 					if (item.oldValue !== undefined) {
-						item.displayValue += " &raquo; " + format(item.oldValue);
+						item.displayValue = format(item.oldValue) + " &raquo; " + item.displayValue;
 					}
 				});
 			}
@@ -212,7 +212,7 @@ ui.directive('uiMailMessage', function () {
 				"</a>" +
 				"<div class='mail-message'>" +
 					"<span class='arrow left'></span>" +
-					"<span class='star left' ng-show='message.$isNew || !message.$flags.isRead'><i class='fa fa-asterisk'></i></span>" +
+					"<span class='star left' ng-show='message.$thread && (message.$isNew || !message.$flags.isRead)'><i class='fa fa-asterisk'></i></span>" +
 					"<div class='mail-message-icons'>" +
 						"<span ng-if='::message.$thread'>" +
 							"<i class='fa fa-reply' ng-show='::message.$thread' ng-click='onReply(message)'></i> " +
@@ -231,18 +231,27 @@ ui.directive('uiMailMessage', function () {
 									"<a href='javascript:' ng-show='message.$flags.isStarred' ng-click='onFlag(message, -2)' x-translate>Mark as not important</a>" +
 								"</li>" +
 								"<li ng-if='message.$thread' ng-show='::!message.parent'>" +
-									"<a href='javascript:' ng-show='::!message.$flags.isArchived' ng-click='onFlag(message, 3)'>Move to archive</a>" +
-									"<a href='javascript:' ng-show='::message.$flags.isArchived' ng-click='onFlag(message, -3)'>Move to inbox</a>" +
+									"<a href='javascript:' ng-show='::!message.$flags.isArchived' ng-click='onFlag(message, 3)' x-translate>Move to archive</a>" +
+									"<a href='javascript:' ng-show='::message.$flags.isArchived' ng-click='onFlag(message, -3)' x-translate>Move to inbox</a>" +
 								"</li>" +
 								"<li>" +
-									"<a href='javascript:' ng-show='::message.$canDelete' ng-click='onRemove(message)'>Delete</a>" +
+									"<a href='javascript:' ng-show='::message.$canDelete' ng-click='onRemove(message)' x-translate>Delete</a>" +
 								"</li>" +
 				            "</ul>" +
 						"</div>" +
 					"</div>" +
 					"<div class='mail-message-header' ng-if='::message.$name || message.$title'>" +
-						"<span class='subject'>" +
+						"<span class='subject' ng-if='::message.$thread'>" +
 							"<a ng-if='message.relatedId && message.$name' href='#ds/form::{{::message.relatedModel}}/edit/{{::message.relatedId}}'>{{::message.$name}}</a>" +
+							"<span ng-if='::!message.relatedId && message.$name'>{{::message.$name}}</span>" +
+							"<span ng-if='::message.$name'> - </span>" +
+							"<span ng-if='::message.$title'>" +
+								"<a ng-if='::message.relatedId' href='#ds/form::{{::message.relatedModel}}/edit/{{::message.relatedId}}'>{{:: _t(message.$title) }}</a>" +
+								"<span ng-if='::!message.relatedId'>{{:: _t(message.$title) }}</span>" +
+							"</span>" +
+						"</span>" +
+						"<span class='subject' ng-if='::!message.$thread'>" +
+							"<span ng-if='message.relatedId && message.$name'>{{::message.$name}}</span>" +
 							"<span ng-if='::!message.relatedId && message.$name'>{{::message.$name}}</span>" +
 							"<span ng-if='::message.$name'> - </span>" +
 							"<span ng-if='::message.$title'>{{:: _t(message.$title) }}</span>" +

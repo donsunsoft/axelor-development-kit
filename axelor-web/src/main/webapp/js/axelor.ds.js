@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -72,12 +72,34 @@
 
 		var pollResult = {};
 		var pollPromise = null;
+		var pollIdle = null;
+
 		var listeners = [];
 
+		function cancelPolling() {
+			if (pollPromise) {
+				$timeout.cancel(pollPromise);
+				pollPromise = null;
+			}
+			if (pollIdle) {
+				clearTimeout(pollIdle);
+				pollIdle = null;
+			}
+		}
+
+		function startPolling() {
+			if (pollPromise === null) {
+				findTags();
+			}
+		}
+
+		var starting = false;
 		function findTags() {
+			if (starting) { return; }
 			if (pollPromise) {
 				$timeout.cancel(pollPromise);
 			}
+			starting = true;
 			MenuService.tags().success(function (res) {
 				var data = _.first(res.data);
 				var values = data.values;
@@ -85,11 +107,23 @@
 					listeners[i](values);
 				}
 				pollPromise = $timeout(findTags, POLL_INTERVAL);
+				if (pollIdle === null) {
+					pollIdle = setTimeout(cancelPolling, POLL_INTERVAL * 2);
+				}
+				starting = false;
 			});
 		}
 
+		window.addEventListener("mousemove", startPolling, false);
+		window.addEventListener("mousedown", startPolling, false);
+		window.addEventListener("keypress", startPolling, false);
+		window.addEventListener("DOMMouseScroll", startPolling, false);
+		window.addEventListener("mousewheel", startPolling, false);
+		window.addEventListener("touchmove", startPolling, false);
+		window.addEventListener("MSPointerMove", startPolling, false);
+
 		// start polling
-		findTags();
+		startPolling();
 
 		return {
 			find: findTags,
@@ -145,6 +179,13 @@
 						item[key] = value;
 					}
 				});
+
+				["canNew", "canView", "canEdit", "canRemove", "canSelect"].forEach(function (name) {
+					if (item[name] === "false" || item[name] === "true") {
+						item[name] = item[name] === "true";
+					}
+				});
+
 				if (item.items || item.pages) {
 					ViewService.prototype.process(meta, item);
 				}

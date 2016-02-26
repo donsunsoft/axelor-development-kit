@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -615,6 +615,8 @@ ui.directive('uiViewSwitcher', function(){
 	return {
 		scope: true,
 		link: function(scope, element, attrs) {
+
+			element.parents('.view-container:first').addClass('has-toolbar');
 
 			element.find("button").click(function(e){
 				var type = $(this).attr("x-view-type"),

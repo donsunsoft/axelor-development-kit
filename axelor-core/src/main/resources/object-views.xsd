@@ -72,6 +72,11 @@
         </xsd:documentation>
       </xsd:annotation>
     </xsd:attribute>
+    <xsd:attribute name="icon-background" type="tns:ColorStyle">
+      <xsd:annotation>
+        <xsd:documentation>Specify icon background color (predefined or html hex color)</xsd:documentation>
+      </xsd:annotation>
+    </xsd:attribute>
     <xsd:attribute name="action" type="xsd:string">
       <xsd:annotation>
         <xsd:documentation>
@@ -483,6 +488,34 @@
       </xsd:extension>
     </xsd:complexContent>
   </xsd:complexType>
+
+  <xsd:simpleType name="ColorStyle">
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:enumeration value="green" />
+          <xsd:enumeration value="blue" />
+          <xsd:enumeration value="red" />
+          <xsd:enumeration value="yellow" />
+          <xsd:enumeration value="pink" />
+          <xsd:enumeration value="orange" />
+          <xsd:enumeration value="olive" />
+          <xsd:enumeration value="purple" />
+          <xsd:enumeration value="violet" />
+          <xsd:enumeration value="teal" />
+          <xsd:enumeration value="brown" />
+          <xsd:enumeration value="grey" />
+          <xsd:enumeration value="white" />
+          <xsd:enumeration value="black" />
+        </xsd:restriction>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:pattern value="#[\dA-Fa-f]{6}([\dA-Fa-f][\dA-Fa-f])?"></xsd:pattern>
+        </xsd:restriction>
+      </xsd:simpleType>
+    </xsd:union>
+  </xsd:simpleType>
 
   <xsd:simpleType name="HiliteStyle">
     <xsd:restriction base="xsd:string">
@@ -1006,6 +1039,8 @@
     <xsd:choice>
       <xsd:element name="field" type="tns:PanelField" />
       <xsd:element name="label" type="tns:Label" />
+      <xsd:element name="help" type="tns:Help" />
+      <xsd:element name="static" type="tns:Static" />
       <xsd:element name="spacer" type="tns:Spacer" />
       <xsd:element name="button" type="tns:Button" />
       <xsd:element name="button-group">
@@ -1128,8 +1163,22 @@
       <xsd:extension base="tns:AbstractPanel">
         <xsd:choice minOccurs="0" maxOccurs="unbounded">
           <xsd:element name="field" type="tns:BaseField"/>
+          <xsd:element name="button" type="tns:Button"/>
           <xsd:element name="spacer" type="tns:Spacer" />
           <xsd:element name="label" type="tns:Label" />
+          <xsd:element name="panel">
+            <xsd:complexType>
+              <xsd:complexContent>
+                <xsd:extension base="tns:PanelEditor">
+                  <xsd:attribute name="layout" use="prohibited" />
+                  <xsd:attribute name="onNew" use="prohibited" />
+                  <xsd:attribute name="x-viewer" use="prohibited" />
+                  <xsd:attribute name="x-show-titles" use="prohibited" />
+                  <xsd:attribute name="x-show-on-new" use="prohibited" />
+                </xsd:extension>
+              </xsd:complexContent>
+            </xsd:complexType>
+          </xsd:element>
         </xsd:choice>
         <xsd:attribute name="layout" type="xsd:string">
           <xsd:annotation>
@@ -1204,6 +1253,7 @@
           <xsd:element name="menubar" type="tns:Menubar" minOccurs="0" />
             <xsd:choice minOccurs="0" maxOccurs="1">
               <xsd:choice maxOccurs="unbounded">
+                <xsd:element name="help" type="tns:Help" />
                 <xsd:element name="panel" type="tns:Panel" />
                 <xsd:element name="panel-include" type="tns:FormInclude" />
                 <xsd:element name="panel-dashlet" type="tns:Dashlet" />
@@ -1569,6 +1619,7 @@
         <xsd:documentation>Name of the field</xsd:documentation>
       </xsd:annotation>
     </xsd:attribute>
+    <xsd:anyAttribute processContents="skip" />
   </xsd:complexType>
 
   <xsd:complexType name="CardStyle">
@@ -2147,6 +2198,25 @@
         <xsd:attribute name="readonly" use="prohibited" />
         <xsd:attribute name="readonlyIf" use="prohibited" />
       </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="Static">
+    <xsd:complexContent mixed="true">
+      <xsd:extension base="tns:SimpleWidget">
+        <xsd:attribute name="name" type="xsd:string" />
+        <xsd:attribute name="title" use="prohibited" />
+        <xsd:attribute name="showTitle" use="prohibited" />
+        <xsd:attribute name="readonly" use="prohibited" />
+        <xsd:attribute name="readonlyIf" use="prohibited" />
+        <xsd:attribute name="help" use="prohibited" />
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+
+  <xsd:complexType name="Help">
+    <xsd:complexContent>
+      <xsd:extension base="tns:Static"></xsd:extension>
     </xsd:complexContent>
   </xsd:complexType>
 

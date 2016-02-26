@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -32,12 +32,16 @@ function ChartCtrl($scope, $element, $http) {
 	var view = $scope.view = views.chart;
 	
 	var viewChart = null;
-	var viewValues = null;
+	var searchScope = null;
 
 	var loading = false;
 	var unwatch = null;
 
 	function refresh() {
+
+		if (viewChart && searchScope && $scope.searchFields && !searchScope.isValid()) {
+			return;
+		}
 
 		var context = $scope._context || {};
 		if ($scope.getContext) {
@@ -50,7 +54,7 @@ function ChartCtrl($scope, $element, $http) {
 			}
 		}
 
-		context = _.extend({}, context, viewValues);
+		context = _.extend({}, context, (searchScope||{}).record);
 		loading = true;
 		
 		var params = {
@@ -64,6 +68,7 @@ function ChartCtrl($scope, $element, $http) {
 		return $http.post('ws/meta/chart/' + view.name, params).then(function(response) {
 			var res = response.data;
 			var data = res.data;
+			var isInitial = viewChart === null;
 
 			if (viewChart === null) {
 				viewChart = data;
@@ -76,10 +81,19 @@ function ChartCtrl($scope, $element, $http) {
 				$scope.searchInit = data.onInit;
 			} else {
 				$scope.render(data);
+				if (isInitial) {
+					refresh(); // force loading data
+				}
 			}
+			loading = false;
+		}, function () {
 			loading = false;
 		});
 	}
+
+	$scope.setSearchScope = function (formScope) {
+		searchScope = formScope;
+	};
 
 	$scope.onRefresh = function(force) {
 		if (unwatch || loading) {
@@ -87,7 +101,7 @@ function ChartCtrl($scope, $element, $http) {
 		}
 
 		// in case of onInit
-		if ($scope.searchInit && !viewValues && !force) {
+		if ($scope.searchInit && !(searchScope||{}).record && !force) {
 			return;
 		}
 
@@ -99,10 +113,6 @@ function ChartCtrl($scope, $element, $http) {
 			unwatch = null;
 			refresh();
 		});
-	};
-
-	$scope.setViewValues = function (values) {
-		viewValues = values;
 	};
 
 	$scope.render = function(data) {
@@ -119,8 +129,10 @@ function ChartFormCtrl($scope, $element, ViewService, DataSource) {
 	$scope._dataSource = DataSource.create('com.axelor.meta.db.MetaView');
 	
 	ui.FormViewCtrl.call(this, $scope, $element);
+
 	$scope.setEditable();
-	
+	$scope.setSearchScope($scope);
+
 	function fixFields(fields) {
 		_.each(fields, function(field){
 			if (field.type == 'reference') {
@@ -169,7 +181,6 @@ function ChartFormCtrl($scope, $element, ViewService, DataSource) {
 		var interval;
 
 		function reload() {
-			$scope.$parent.setViewValues($scope.record);
 			$scope.$parent.onRefresh();
 			$scope.applyLater();
 		}
@@ -220,6 +231,16 @@ function applyXY(chart, data) {
 		return chart.x(function (d) { return moment(d.x).toDate(); });
 	}
 	return chart.x(function (d) { return d.x; });
+}
+
+function colors(color) {
+	var all = d3.scale.category20b().range();
+	if (color) {
+		all = _.flatten(color.split(',').map(function (c) {
+			return _.range(0, 5).map(d3.scale.linear().domain([0, 5]).range([c, 'white']))
+		}).concat(all));
+	}
+	return all;
 }
 
 var CHARTS = {};
@@ -287,7 +308,7 @@ function PieChart(scope, element, data) {
 		.showLabels(false)
 		.x(function(d) { return d.x; })
 		.y(function(d) { return d.y; })
-	    .color(d3.scale.category10().range());
+	    .color(colors(config.colors));
 
 	if (series.type === "donut") {
 		chart.donut(true)
@@ -588,6 +609,10 @@ function Chart(scope, element, data) {
 			return;
 		}
 
+		if (chart.color) {
+			chart.color(colors(config.colors));
+		}
+
 		if (chart.noData) {
 			chart.noData(noData);
 		}
@@ -657,12 +682,13 @@ function Chart(scope, element, data) {
 		
 		function adjust() {
 			
-			if (element.is(":hidden")) {
+			if (!element[0] || element.parent().is(":hidden")) {
 				return;
 			}
 
-			var w = element.width(),
-				h = element.height();
+			var rect = element[0].getBoundingClientRect();
+			var w = rect.width,
+				h = rect.height;
 			
 			if (w === lastWidth && h === lastHeight) {
 				return;
@@ -686,27 +712,20 @@ var directiveFn = function(){
 		controller: ChartCtrl,
 		link: function(scope, element, attrs) {
 			
-			var initialized = false;
 			var svg = element.children('svg');
 			var form = element.children('.chart-controls');
 			
 			scope.render = function(data) {
-				if (svg.is(":hidden")) {
-					initialized = false;
+				if (element.is(":hidden")) {
 					return;
 				}
 				setTimeout(function () {
 					svg.height(element.height() - form.height()).width('100%');
 					scope.title = data.title;
 					Chart(scope, svg, data);
-					initialized = true;
 					return;
 				});
 			};
-
-			element.on("adjustSize", function(e){
-				if (!initialized) scope.onRefresh();
-			});
 
 			function onNewOrEdit() {
 				if (scope.searchInit && scope.searchFields) {

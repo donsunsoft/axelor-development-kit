@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -117,10 +117,15 @@ ui.formInput('Image', 'ImageLink', {
 		scope.getLink = function (value) {
 			var record = scope.record || {};
 			var model = scope._model;
-			if (!record.id || value === null) return value || BLANK;
+			if (value === null) return BLANK;
 			if (isBinary) {
-				if (value) return value;
-				return makeURL(model, field.name, record) + "&image=true";
+				if (value) {
+					return value;
+				}
+				if (record.id) {
+					return makeURL(model, field.name, record) + "&image=true";
+				}
+				return BLANK;
 			}
 			return makeURL(META_FILE, "content", (value.id || value));
 		};

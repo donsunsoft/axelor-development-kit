@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -244,6 +244,10 @@ public class ViewLoader extends AbstractLoader {
 		entity.setXml(xml);
 		entity.setGroups(this.findGroups(view.getGroups(), entity.getGroups()));
 
+		if (entity.getHelpLink() == null) {
+			entity.setHelpLink(view.getHelpLink());
+		}
+
 		entity = views.save(entity);
 	}
 
@@ -271,6 +275,7 @@ public class ViewLoader extends AbstractLoader {
 
 		if (entity == null) {
 			entity = new MetaSelect(selection.getName());
+			entity.setXmlId(xmlId);
 		}
 		
 		if (other == entity) {
@@ -466,6 +471,7 @@ public class ViewLoader extends AbstractLoader {
 
 		entity.setTitle(menuItem.getTitle());
 		entity.setIcon(menuItem.getIcon());
+		entity.setIconBackground(menuItem.getIconBackground());
 		entity.setModule(module.getName());
 		entity.setTag(menuItem.getTag());
 		entity.setTagGet(menuItem.getTagGet());

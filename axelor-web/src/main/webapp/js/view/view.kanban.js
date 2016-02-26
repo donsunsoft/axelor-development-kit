@@ -1,7 +1,7 @@
 /*
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -51,6 +51,7 @@ function BaseCardsCtrl(type, $scope, $element) {
 
 		viewPromise.then(function (meta) {
 			$scope.parse(meta.fields, meta.view);
+			$scope.$broadcast("on:clear-filter-silent");
 		});
 	};
 
@@ -67,7 +68,7 @@ function BaseCardsCtrl(type, $scope, $element) {
 	};
 
 	$scope.onRefresh = function () {
-		$scope.filter({});
+		return $scope.filter({});
 	};
 
 	function update(records) {
@@ -116,8 +117,27 @@ ui.controller("CardsCtrl", ['$scope', '$element', function CardsCtrl($scope, $el
 
 	BaseCardsCtrl.call(this, 'cards', $scope, $element);
 
+	$scope.viewItems = {};
+
 	$scope.parse = function (fields, view) {
+		var viewItems = {};
+		_.each(view.items, function (item) {
+			if (item.name) {
+				viewItems[item.name] = _.extend({}, item, fields[item.name], item.widgetAttrs);
+			}
+		});
+		$scope.viewItems = viewItems;
 		$scope.onRefresh();
+		$scope.waitForActions(axelor.$adjustSize);
+	};
+
+	$scope.onExport = function (full) {
+		var fields = full ? [] : _.pluck($scope.viewItems, 'name');
+		return $scope._dataSource.export_(fields).success(function(res) {
+			var fileName = res.fileName;
+			var filePath = 'ws/rest/' + $scope._model + '/export/' + fileName;
+			ui.download(filePath, fileName);
+		});
 	};
 }]);
 
@@ -440,6 +460,23 @@ ui.directive('uiCard', ["$parse", "$compile", function ($parse, $compile) {
 					return "ws/rest/" + field.target + "/" + val.id + "/" + imageName + "/download?image=true&v=" + v;
 				}
 				return "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+			};
+
+			evalScope.$fmt = function (fieldName) {
+				var value = evalScope[fieldName];
+				if (value === undefined || value === null) {
+					return "";
+				}
+				var field = scope.viewItems[fieldName] || scope.fields[fieldName];
+				if (!field) {
+					return value;
+				}
+				var type = field.selection ? "selection" : field.type;
+				var formatter = ui.formatters[type];
+				if (formatter) {
+					return formatter(field, value);
+				}
+				return value;
 			};
 
 			var template = (scope.schema.template || "<span></span>").trim();

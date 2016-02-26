@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -218,6 +218,14 @@ class Entity {
 		indexes.addAll(other.indexes)
 		constraints.addAll(other.constraints)
 		finders.addAll(other.finders)
+
+		if (other.track) {
+			if (track == null || other.track.replace) {
+				track = other.track.copyFor(this);
+			} else {
+				track.merge(other.track);
+			}
+		}
 
 		other.baseEntity = this
 		other.repository = this.repository

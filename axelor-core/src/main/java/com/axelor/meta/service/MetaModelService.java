@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -18,6 +18,7 @@
 package com.axelor.meta.service;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -34,7 +35,9 @@ import org.hibernate.annotations.Formula;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.axelor.auth.db.AuditableModel;
 import com.axelor.db.JPA;
+import com.axelor.db.Model;
 import com.axelor.db.Query;
 import com.axelor.db.annotations.Widget;
 import com.axelor.meta.db.MetaField;
@@ -128,6 +131,13 @@ public class MetaModelService {
 				metaModel.getMetaFields().add(createField(metaModel, field));
 			}
 		}
+		if (AuditableModel.class.isAssignableFrom(klass)) {
+			for (Field field : AuditableModel.class.getDeclaredFields()) {
+				if (fields.all().filter("metaModel = ?1 AND name = ?2", metaModel, field.getName()).count() == 0){
+					metaModel.getMetaFields().add(createField(metaModel, field));
+				}
+			}
+		}
 		return metaModel;
 	}
 	
@@ -147,7 +157,7 @@ public class MetaModelService {
 		
 		MetaField metaField = null;
 		
-		if (!field.isSynthetic() && !field.isAnnotationPresent(Formula.class)){
+		if (!field.isSynthetic() && !field.isAnnotationPresent(Formula.class) && !Modifier.isTransient(field.getModifiers())){
 			
 			log.trace("Create field : {}", field.getName());
 			
@@ -209,14 +219,42 @@ public class MetaModelService {
 		
 		List<MetaField> modelFields = new ArrayList<MetaField>();
 		MetaField metaField = new MetaField();
-		
-		for (Field field : klass.getDeclaredFields()){
-			metaField = this.createField(metaModel, field);
-			if (metaField != null){
+
+		// first add id field
+		Field idField = null;
+		try {
+			idField = klass.getDeclaredField("id");
+			idField = Model.class.getDeclaredField("id");
+		} catch (Exception e) {
+		}
+		if (idField != null) {
+			metaField = this.createField(metaModel, idField);
+			if (metaField != null) {
 				modelFields.add(metaField);
 			}
 		}
-		
+
+		// then own fields
+		for (Field field : klass.getDeclaredFields()) {
+			if ("id".equals(field.getName()) && idField != null) {
+				continue;
+			}
+			metaField = this.createField(metaModel, field);
+			if (metaField != null) {
+				modelFields.add(metaField);
+			}
+		}
+
+		// finally audit fields
+		if (AuditableModel.class.isAssignableFrom(klass)) {
+			for (Field field : AuditableModel.class.getDeclaredFields()) {
+				metaField = this.createField(metaModel, field);
+				if (metaField != null) {
+					modelFields.add(metaField);
+				}
+			}
+		}
+
 		return modelFields;
 	}
 	

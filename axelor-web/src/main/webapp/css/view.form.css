@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -608,27 +608,32 @@ td.form-item > * {
 	margin: 0;
 }
 
-.form-item ul.radio-select {
+.form-item ul.radio-select,
+.form-item ul.checkbox-select  {
 	list-style-type: none;
 	overflow: hidden;
 	padding-top: 3px;
+	margin: 0;
 }
 
-.form-item ul.radio-select > li {
+.form-item ul.radio-select > li,
+.form-item ul.checkbox-select > li {
 	float: left;
 	margin: 0 4px;
 }
 
-.form-item ul.radio-select-vertical > li {
+.form-item ul.radio-select-vertical > li,
+.form-item ul.checkbox-select-vertical > li {
 	float: none;
 }
 
 .form-item ul.radio-select > li input[type="radio"],
-.form-item ul.radio-select > li input[type="checkbox"] {
+.form-item ul.checkbox-select > li input[type="checkbox"] {
 	margin-top: -2px;
 }
 
-.form-item ul.radio-select.readonly > li label {
+.form-item ul.radio-select.readonly > li label,
+.form-item ul.checkbox-select.readonly > li label {
 	cursor: default;
 }
 
@@ -713,6 +718,15 @@ table.field-details .help-text hr {
 	background-color: white;	
 }
 
+label.has-help > span:after {
+	font: normal normal normal 14px/1 FontAwesome;
+	content: "\f06a";
+	font-size: 10px;
+	color: #107a4a;
+	margin-left: 2px;
+    position: absolute;
+}
+
 .ws-nowrap {
 	white-space: nowrap;
 }
@@ -794,7 +808,7 @@ table.field-details .help-text hr {
 	position: relative;
 	line-height: 32px;
 	padding: 0 14px 0 24px;
-
+	white-space: nowrap;
 	background: #e2e2e2;
 }
 
@@ -824,7 +838,6 @@ table.field-details .help-text hr {
 }
 .nav-select li.dropdown a.nav-label {
 	padding-right: 6px;
-	display: inline-block;
 	padding: 0;
 	height: 32px;
 }
@@ -1086,6 +1099,7 @@ table.field-details .help-text hr {
 	box-sizing: border-box;
 	width: 200px;
 	vertical-align: middle;
+	z-index: 1;
 }
 
 .filter-box .search-query {
@@ -1095,6 +1109,7 @@ table.field-details .help-text hr {
 
 .filter-box .tag-select ul {
 	padding-bottom: 0;
+    margin-left: 2px;
 }
 
 .filter-box .tag-select li {

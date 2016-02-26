@@ -1,7 +1,7 @@
 /**
  * Axelor Business Solutions
  *
- * Copyright (C) 2005-2015 Axelor (<http://axelor.com>).
+ * Copyright (C) 2005-2016 Axelor (<http://axelor.com>).
  *
  * This program is free software: you can redistribute it and/or  modify
  * it under the terms of the GNU Affero General Public License, version 3,
@@ -52,9 +52,24 @@ public class AuthFilter extends FormAuthenticationFilter {
 		return super.getLoginUrl();
 	}
 
+	private boolean isRootWithoutSlash(ServletRequest request) {
+		final HttpServletRequest req = (HttpServletRequest) request;
+		final String ctx = WebUtils.getContextPath(req);
+		final String uri = WebUtils.getRequestUri(req);
+		return ctx != null && uri != null && !uri.endsWith("/") && ctx.length() == uri.length();
+	}
+
 	@Override
 	public void doFilterInternal(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
+
+		// tomcat 7.0.67 doesn't redirect with / if root request is sent without slash
+		// see RM-4500 for more details
+		if (!SecurityUtils.getSubject().isAuthenticated() && isRootWithoutSlash(request)) {
+			WebUtils.issueRedirect(request, response, "/");
+			return;
+		}
+
 		if (isLoginRequest(request, response) && SecurityUtils.getSubject().isAuthenticated()) {
 			// in case of login submission with ajax
 			if (isXHR(request) && isLoginSubmission(request, response)) {

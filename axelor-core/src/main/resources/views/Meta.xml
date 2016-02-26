@@ -100,6 +100,7 @@
         <field name="title" colSpan="12"/>
         <field name="type"/>
         <field name="priority"/>
+        <field name="helpLink" colSpan="12"/>
       </panel>
       <panel itemSpan="12">
         <field name="model"/>
@@ -170,32 +171,51 @@
     <field name="priority"/>
   </grid>
 
-  <form name="meta-menu-form" title="Menu Item" model="com.axelor.meta.db.MetaMenu">
+  <grid name="meta-menu-fav-grid" title="Favorites" model="com.axelor.meta.db.MetaMenu" orderBy="-priority" canNew="false" editable="true">
+    <field name="title"/>
+    <field name="link"/>
+    <field name="priority" width="100"/>
+  </grid>
+  <form name="meta-menu-fav-form" title="Favorite" model="com.axelor.meta.db.MetaMenu" canNew="false">
     <panel title="Overview">
-      <panel title="General" colSpan="12">
-        <field name="name"/>
-        <field name="parent" domain="self.name != :name"/>
-        <field name="title"/>
-        <field name="icon"/>
-        <field name="action"/>
-        <field name="module"/>
-      </panel>
-      <panel title="Visibility" colSpan="6">
-        <field name="order"/>
-        <field name="priority"/>
-        <field name="top" widget="inline-checkbox"/>
-        <field name="left" widget="inline-checkbox"/>
-        <field name="mobile" widget="inline-checkbox"/>
-        <field name="hidden" widget="inline-checkbox"/>
-      </panel>
-      <panel title="Tag" colSpan="6">
-        <field name="tag"/>
-        <field name="tagStyle"/>
-        <field name="tagGet" title="Call" hideIf="tag"/>
-        <field name="tagCount" title="Count" hideIf="tag"/>
-      </panel>
+      <field name="title"/>
+      <field name="priority"/>
+      <field name="link" colSpan="12" />
+    </panel>
+  </form>
+  <action-view name="menus.fav" model="com.axelor.meta.db.MetaMenu" title="Favorites">
+    <view name="meta-menu-fav-grid" type="grid"/>
+    <view name="meta-menu-fav-form" type="form"/>
+    <domain>self.user = :__user__ and self.link is not null</domain>
+  </action-view>
+
+  <form name="meta-menu-form" title="Menu Item" model="com.axelor.meta.db.MetaMenu">
+    <panel title="General" colSpan="12">
+      <field name="name"/>
+      <field name="parent" domain="self.name != :name"/>
+      <field name="title"/>
+      <field name="action"/>
+      <field name="icon"/>
+      <field name="iconBackground" />
+      <field name="link" />
+      <field name="module"/>
+    </panel>
+    <panel title="Visibility" sidebar="true" itemSpan="6">
+      <field name="order"/>
+      <field name="priority"/>
+      <field name="top" widget="inline-checkbox"/>
+      <field name="left" widget="inline-checkbox"/>
+      <field name="mobile" widget="inline-checkbox"/>
+      <field name="hidden" widget="inline-checkbox"/>
+    </panel>
+    <panel title="Tag" sidebar="true" itemSpan="6">
+      <field name="tag"/>
+      <field name="tagStyle"/>
+      <field name="tagGet" title="Call" hideIf="tag"/>
+      <field name="tagCount" title="Count" hideIf="tag"/>
     </panel>
     <panel-related field="groups"/>
+    <panel-related field="roles"/>
   </form>
 
   <grid title="Action Menus" name="meta-action-menu-grid" model="com.axelor.meta.db.MetaActionMenu">
@@ -227,13 +247,11 @@
   <grid title="All Selects" name="meta-select-grid" model="com.axelor.meta.db.MetaSelect">
     <field name="name"/>
     <field name="module"/>
-    <field name="priority" width="75"/>
   </grid>
 
   <form name="meta-select-form" title="Select" model="com.axelor.meta.db.MetaSelect">
     <panel title="Overview">
       <field name="name"/>
-      <field name="priority"/>
       <field name="module"/>
     </panel>
     <panel-related field="items" editable="true" orderBy="order">
@@ -287,7 +305,7 @@
       <field name="tableName"/>
       <field name="packageName"/>
     </panel>
-    <panel-related field="metaFields" />
+    <panel-related field="metaFields" orderBy="id" />
   </form>
 
   <selection name="relationship.field.selection">
